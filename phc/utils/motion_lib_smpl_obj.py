@@ -96,7 +96,7 @@ class MotionLibSMPLObj(MotionLibSMPL):
             #     trans = torch.matmul(trans, torch.from_numpy(random_heading_rot.as_matrix().T).float())
             ##### ZL: randomize the heading ######
 
-            trans, trans_fix = MotionLibSMPL.fix_trans_height(pose_aa, trans, curr_gender_beta, mesh_parsers, fix_height_mode = fix_height)
+            # trans, trans_fix = MotionLibSMPL.fix_trans_height(pose_aa, trans, curr_gender_beta, mesh_parsers, fix_height_mode = fix_height)
 
             pose_quat_global = to_torch(pose_quat_global)
             sk_state = SkeletonState.from_rotation_and_root_translation(skeleton_trees[f], pose_quat_global, trans, is_local=False)
@@ -487,12 +487,14 @@ class MotionLibSMPLObj(MotionLibSMPL):
         h_rb_pos0, h_rb_pos1 = self.h_gts[f0l, :], self.h_gts[f1l, :]
         h_lin_vel0, h_lin_vel1 = self.h_gvs[f0l], self.h_gvs[f1l]
 
+        # if motion_times[0] > 22.46:
+        #     import pdb; pdb.set_trace()
+
         h_rb_rot = torch_utils.slerp(h_rb_rot0, h_rb_rot1, blend_exp)
         h_rb_pos = (1.0 - blend_exp) * h_rb_pos0 + blend_exp * h_rb_pos1
         h_lin_vel = (1.0 - blend_exp) * h_lin_vel0 + blend_exp * h_lin_vel1
         h_ang_vel = (1.0 - blend_exp) * h_ang_vel0 + blend_exp * h_ang_vel1
         
-
         return {
             "root_pos": rg_pos[..., 0, :].clone(),
             "root_rot": rb_rot[..., 0, :].clone(),

@@ -263,7 +263,6 @@ class IMAMPPlayerContinuous(amp_players.AMPPlayerContinuous):
                 for n in range(self.max_steps):
                     obs_dict = self.env_reset(done_indices)
 
-
                     if COLLECT_Z: z = self.get_z(obs_dict)
                         
 

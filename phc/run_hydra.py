@@ -296,7 +296,7 @@ def main(cfg_hydra: DictConfig) -> None:
 
     # cfg, cfg_train, logdir = load_cfg(args)
     flags.debug, flags.follow, flags.fixed, flags.divide_group, flags.no_collision_check, flags.fixed_path, flags.real_path,  flags.show_traj, flags.server_mode, flags.slow, flags.real_traj, flags.im_eval, flags.no_virtual_display, flags.render_o3d = \
-        cfg.debug, cfg.follow, False, False, False, False, False, True, cfg.server_mode, False, False, cfg.im_eval, cfg.no_virtual_display, cfg.render_o3d
+        cfg.debug, cfg.follow, False, False, True, False, False, True, cfg.server_mode, False, False, cfg.im_eval, cfg.no_virtual_display, cfg.render_o3d
 
     flags.test = cfg.test
     flags.add_proj = cfg.add_proj

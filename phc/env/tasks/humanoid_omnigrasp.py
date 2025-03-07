@@ -59,6 +59,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         
         # ZL Debugging putting objects. Fix asap. Very very very very janky 
         data_seq = joblib.load(cfg.env.motion_file)
+        self.pkl_data = data_seq
         self.data_key = data_key = list(data_seq.keys())[0]
         
         self.gender  = data_seq[data_key]["gender"]
@@ -149,6 +150,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
     def _setup_tensors(self):
         super()._setup_tensors()
         self._build_target_tensors()
+        self._build_marker_state_tensors()
 
     def _build_traj_generator(self):
         num_envs = self.num_envs
@@ -161,7 +163,11 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             
             self._traj_gen = traj_generator_3d_orig.TrajGenerator3D(num_envs, episode_dur, num_verts, self.device, self.cfg.env.traj_gen, starting_still_dt=self.table_remove_frame * self.dt)
         else:
-            self._traj_gen = traj_generator_3d.TrajGenerator3D(num_envs, episode_dur, num_verts, self.device, self.cfg.env.traj_gen, starting_still_dt=self.table_remove_frame * self.dt)
+            # self._traj_gen = traj_generator_3d.TrajGenerator3D(num_envs, episode_dur, num_verts, self.device, self.cfg.env.traj_gen, starting_still_dt=self.table_remove_frame * self.dt)
+            num_verts = self.pkl_data["Otter"]['obj_data']['obj_pose'].shape[0]
+            self._traj_gen = traj_generator_3d.TrajGenerator3DInFile(
+                num_envs, episode_dur, num_verts, self.device, self.cfg.env.traj_gen, self.pkl_data, starting_still_dt=self.table_remove_frame * self.dt
+            )
 
         env_ids = torch.arange(self.num_envs, device=self.device, dtype=torch.long)
         self._traj_gen.reset(env_ids, init_pos = self._obj_states[:, 0:3], init_rot = self._obj_states[:, 3:7], time_till_table_removal=self.table_remove_frame.max() * self.dt)
@@ -372,12 +378,16 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         self._target_handles = []
         self._load_target_asset()
 
+        self._marker_handles = [[] for _ in range(num_envs)]
+        self._load_marker_asset()
+
         super()._create_envs(num_envs, spacing, num_per_row)
         return
 
     def _build_env(self, env_id, env_ptr, humanoid_asset):
         super()._build_env(env_id, env_ptr, humanoid_asset)
         self._build_target(env_id, env_ptr)
+        self._build_marker(env_id, env_ptr)
         return
     
     def _load_target_asset(self): 
@@ -395,7 +405,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
             asset_options.vhacd_enabled = True
             
-            asset_options.vhacd_params.max_convex_hulls = 32 
+            asset_options.vhacd_params.max_convex_hulls = 512 #32 
             asset_options.vhacd_params.max_num_vertices_per_ch = 72
             
             if "oakink" in obj_asset_root:
@@ -421,13 +431,16 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         asset_options_fix.density = 1000.0
         asset_options_fix.default_dof_drive_mode = gymapi.DOF_MODE_NONE
         asset_options_fix.vhacd_enabled = True
-        asset_options_fix.vhacd_params.max_convex_hulls = 10
+        # asset_options_fix.vhacd_params.max_convex_hulls = 10
+        asset_options_fix.vhacd_params.max_convex_hulls = 2560 #1000
         asset_options_fix.vhacd_params.max_num_vertices_per_ch = 64
         asset_options.override_com = True
         asset_options.override_inertia = True
         asset_options_fix.vhacd_params.resolution = 300000
         asset_options_fix.fix_base_link = True
-        asset_file = "table.urdf"
+        # asset_file = "table.urdf"
+        # asset_file = "bg.urdf"
+        asset_file = "Otter-001.urdf"
         
         _target_asset = self.gym.load_asset(self.sim, "phc/data/assets/urdf/grab/", asset_file, asset_options_fix)
         self._target_assets['table'] = _target_asset
@@ -534,7 +547,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                 motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
         else:
             raise NotImplementedError
-            
+
         motion_times[:] = 0 # Even though you sampled at a certain time, the internal timer should start at 0 
         return self._sampled_motion_ids[env_ids], motion_times, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, ref_rb_pos, ref_rb_rot, ref_body_vel, ref_body_ang_vel
 
@@ -805,7 +818,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         if self.save_kin_info: # this needs to happen BEFORE the next time-step observation is computed, to collect the "current time-step target"
             self.extras['kin_dict'] = self.kin_dict
             
-        self.remove_table(env_ids=self.all_env_ids[self.progress_buf > self.table_remove_frame ])
+        # self.remove_table(env_ids=self.all_env_ids[self.progress_buf > self.table_remove_frame ])
         
         
         super().post_physics_step()
@@ -843,8 +856,92 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             
         self.grab_termination_disatnce = to_torch(np.array(self.cfg["env"].get("grab_termination_distance", 0.5)), device=self.device)
         return
-    
+
+    def _load_marker_asset(self):
+        asset_root = "phc/data/assets/urdf/"
+
+        asset_options = gymapi.AssetOptions()
+        asset_options.angular_damping = 0.0
+        asset_options.linear_damping = 0.0
+        asset_options.max_angular_velocity = 0.0
+        asset_options.density = 0
+        asset_options.fix_base_link = True
+        asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
+
+        self._marker_asset = self.gym.load_asset(self.sim, asset_root, "traj_marker.urdf", asset_options)
+        
+        self._marker_asset_small = self.gym.load_asset(self.sim, asset_root, "traj_marker_small.urdf", asset_options)
+
+        return
+
+    def _build_marker(self, env_id, env_ptr):
+        default_pose = gymapi.Transform()
+        self._num_joints = len(self._body_names)
+        for i in range(self._num_joints):
+            # Giving hands smaller balls to indicate positions
+            if self.humanoid_type in ['smplh', 'smplx'] and self._body_names_orig[i] in ["L_Wrist", "R_Wrist", "L_Index1", "L_Index2", "L_Index3","L_Middle1","L_Middle2","L_Middle3","L_Pinky1","L_Pinky2", "L_Pinky3", "L_Ring1", "L_Ring2", "L_Ring3", "L_Thumb1", "L_Thumb2", "L_Thumb3", "R_Index1", "R_Index2", "R_Index3", "R_Middle1", "R_Middle2", "R_Middle3", "R_Pinky1", "R_Pinky2", "R_Pinky3", "R_Ring1", "R_Ring2", "R_Ring3", "R_Thumb1", "R_Thumb2", "R_Thumb3",]:
+                marker_handle = self.gym.create_actor(env_ptr, self._marker_asset_small, default_pose, "marker", self.num_envs + 10, 1, 0)    
+            else:
+                marker_handle = self.gym.create_actor(env_ptr, self._marker_asset, default_pose, "marker", self.num_envs + 10, 1, 0)
+            
+            if i in self._track_bodies_id:
+                self.gym.set_rigid_body_color(env_ptr, marker_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.8, 0.0, 0.0))
+            else:
+                self.gym.set_rigid_body_color(env_ptr, marker_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(1.0, 1.0, 1.0))
+            self._marker_handles[env_id].append(marker_handle)
+
+        return
+
+    def _build_marker_state_tensors(self):
+        num_actors = self._root_states.shape[0] // self.num_envs
+
+        self._marker_states = self._root_states.view(self.num_envs, num_actors, self._root_states.shape[-1])[..., 3:(3 + self._num_joints), :]
+        self._marker_pos = self._marker_states[..., :3]
+        self._marker_rotation = self._marker_states[..., 3:7]
+
+        self._marker_actor_ids = self._humanoid_actor_ids.unsqueeze(-1) + to_torch(self._marker_handles, dtype=torch.int32, device=self.device)
+        self._marker_actor_ids = self._marker_actor_ids.flatten()
+
+        return
+
+    def _update_marker(self):
+        if flags.show_traj:
+            
+            motion_times = (self.progress_buf + 1) * self.dt # + self._motion_start_times + self._motion_start_times_offset # + 1 for target. 
+            motion_res = self._get_state_from_motionlib_cache(self._sampled_motion_ids, motion_times) #, self._global_offset)
+            root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, smpl_params, limb_weights, pose_aa, ref_rb_pos, ref_rb_rot, ref_body_vel, ref_body_ang_vel = \
+                    motion_res["root_pos"], motion_res["root_rot"], motion_res["dof_pos"], motion_res["root_vel"], motion_res["root_ang_vel"], motion_res["dof_vel"], \
+                    motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
+            
+            self._marker_pos[:] = ref_rb_pos
+            # self._marker_rotation[..., self._track_bodies_id, :] = ref_rb_rot[..., self._track_bodies_id, :]
+            
+            ## Only update the tracking points. 
+            if flags.real_traj:
+                self._marker_pos[:] = 1000
+
+            self._marker_pos[..., self._track_bodies_id, :] = ref_rb_pos[..., self._track_bodies_id, :]
+
+            if self._occl_training:
+                self._marker_pos[self.random_occlu_idx] = 0
+
+        else:
+            self._marker_pos[:] = 1000
+
+        # ######### Heading debug #######
+        # points = self.init_root_points()
+        # base_quat = self._rigid_body_rot[0, 0:1]
+        # base_quat = remove_base_rot(base_quat)
+        # heading_rot = torch_utils.calc_heading_quat(base_quat)
+        # show_points = quat_apply(heading_rot.repeat(1, points.shape[0]).reshape(-1, 4), points) + (self._rigid_body_pos[0, 0:1]).unsqueeze(1)
+        # self._marker_pos[:] = show_points[:, :self._marker_pos.shape[1]]
+        # ######### Heading debug #######
+
+        self.gym.set_actor_root_state_tensor_indexed(self.sim, gymtorch.unwrap_tensor(self._root_states), gymtorch.unwrap_tensor(self._marker_actor_ids), len(self._marker_actor_ids))
+        return
+
     def _draw_task(self):
+        self._update_marker()
         if not flags.real_traj:
             self.gym.clear_lines(self.viewer)        
             
@@ -892,12 +989,12 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             
             motion_times_steps = ((self.progress_buf[env_ids, None] + 1) * self.dt + time_internals + self._motion_start_times[env_ids, None]).flatten()  # Future poses
             env_ids_steps = self._sampled_motion_ids[env_ids].repeat_interleave(time_steps)
-                
+
             if flags.im_eval and self.has_data:
                 motion_res = self._get_state_from_motionlib_cache(env_ids_steps, motion_times_steps)  # pass in the env_ids such that the motion is in synced.
             else:
                 motion_res = self._traj_gen.get_motion_state(env_ids_steps, motion_times_steps)
-                
+
             o_rb_pos = motion_res['o_rb_pos'].cpu().numpy().reshape(B, time_steps, -1, 3)
         
             for env_id in range(self.num_envs):
