@@ -38,6 +38,9 @@ dyna_latent: False
 obj_rand_pos: True
 obj_rand_pos_extreme: False
 
+add_timestamp: True ################
+pe_dimension: 64
+
 close_distance_pregrasp: 0.2
 close_distance_contact: 0.1
 
@@ -79,6 +82,7 @@ traj_gen:
 
 terminationDistance: 0.25
 grab_termination_distance: 0.12
+# grab_termination_distance: 0.5
 test_termination_distances: 0.12
 fix_height_mode: "full_fix"
 

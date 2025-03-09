@@ -231,7 +231,7 @@ class AMPAgent(common_agent.CommonAgent):
                 res_dict = self.get_masked_action_values(self.obs, masks)
             else:
                 res_dict = self.get_action_values(self.obs)
-            
+
             self.rnn_states = res_dict['rnn_states']
             self.experience_buffer.update_data_rnn('obses', indices, play_mask, self.obs['obs'])
 
