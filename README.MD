@@ -97,6 +97,20 @@ python phc/run_hydra.py  \
     epoch=-1 test=True env.num_envs=1 headless=False
 ```
 
+```
+CUDA_VISIBLE_DEVICES=0 python phc/run_hydra.py  \
+    project_name=OmniGrasp   exp_name=omnigrasp_otter_001  \
+    learning=omnigrasp_rnn \
+    env=env_x_grab_z env.task=HumanoidOmniGraspZ env.motion_file=sample_data/Otter_sample_w_bg.pkl  env.models=['output/HumanoidIm/pulse_x_omnigrasp/Humanoid.pth']   env.numTrajSamples=20 env.trajSampleTimestepInv=15\
+    robot=smplx_humanoid sim=hand_sim env.num_envs=768 learning.params.config.minibatch_size=4096 epoch=-1
+
+CUDA_VISIBLE_DEVICES=0 python phc/run_hydra.py  \
+    project_name=OmniGrasp   exp_name=omnigrasp_otter_001  \
+    learning=omnigrasp_rnn \
+    env=env_x_grab_z env.task=HumanoidOmniGraspZ env.motion_file=sample_data/Otter_sample_w_bg.pkl  env.models=['output/HumanoidIm/pulse_x_omnigrasp/Humanoid.pth']   env.numTrajSamples=20 env.trajSampleTimestepInv=15\
+    robot=smplx_humanoid sim=hand_sim env.num_envs=768 learning.params.config.minibatch_size=4096 epoch=-1
+```
+
 Rendering the above trajectory might be slow, to speed up, use less number of environments or disable object trajectory rendering by press "k". 
 
 

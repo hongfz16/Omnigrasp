@@ -115,32 +115,32 @@ class MotionLibSMPLObj(MotionLibSMPL):
             hand_trans = torch.from_numpy(obj_data['hand_trans']).float() # Pregrasp hand position
             hand_rot = torch.from_numpy(obj_data['hand_rot']).float() # Pregrasp hand rotation (global)
 
-            ############# Random rotation and translate of the object pose #############
-            if cfg.get("obj_rand_pos", False) and (not flags.im_eval) and (not flags.test):
-            # if cfg.get("obj_rand_pos", False) and (not flags.im_eval) :
+            # ############# Random rotation and translate of the object pose #############
+            # if cfg.get("obj_rand_pos", False) and (not flags.im_eval) and (not flags.test):
+            # # if cfg.get("obj_rand_pos", False) and (not flags.im_eval) :
 
-                random_heading = sRot.from_euler("xyz", [0, 0, np.random.random() * 2 * np.pi])
+            #     random_heading = sRot.from_euler("xyz", [0, 0, np.random.random() * 2 * np.pi])
                 
-                random_pos_delta = np.random.random(3) # randomrize position in the range of -0.5 to 0.5
+            #     random_pos_delta = np.random.random(3) # randomrize position in the range of -0.5 to 0.5
                 
-                if cfg.get("obj_rand_pos_extreme", False):
-                    random_pos_delta[0] -= 0.5 # x drecation can be anything 
-                    random_pos_delta[1] -= 1 # y direction can't be negative. 
-                    random_pos_delta[:2] *= 0.25 # Too extreme
-                    random_pos_delta[2] = np.random.uniform(low=-obj_trans[0, 1, 2], high=0.05)
-                else:
-                    random_pos_delta[:2] -= 0.5
-                    random_pos_delta[2] -= 0.75 # lower better. Higher can lead to not plausible poses
-                    random_pos_delta *= 0.1
+            #     if cfg.get("obj_rand_pos_extreme", False):
+            #         random_pos_delta[0] -= 0.5 # x drecation can be anything 
+            #         random_pos_delta[1] -= 1 # y direction can't be negative. 
+            #         random_pos_delta[:2] *= 0.25 # Too extreme
+            #         random_pos_delta[2] = np.random.uniform(low=-obj_trans[0, 1, 2], high=0.05)
+            #     else:
+            #         random_pos_delta[:2] -= 0.5
+            #         random_pos_delta[2] -= 0.75 # lower better. Higher can lead to not plausible poses
+            #         random_pos_delta *= 0.1
                 
-                obj_rot = torch.from_numpy((random_heading * sRot.from_quat(obj_rot.view(-1, 4))).as_quat().reshape(obj_rot.shape)).float()
-                hand_rot = torch.from_numpy((random_heading * sRot.from_quat(hand_rot.view(-1, 4))).as_quat().reshape(hand_rot.shape)).float()
+            #     obj_rot = torch.from_numpy((random_heading * sRot.from_quat(obj_rot.view(-1, 4))).as_quat().reshape(obj_rot.shape)).float()
+            #     hand_rot = torch.from_numpy((random_heading * sRot.from_quat(hand_rot.view(-1, 4))).as_quat().reshape(hand_rot.shape)).float()
                 
-                hand_trans = (hand_trans - obj_trans[:, 0:1]) @ torch.from_numpy(random_heading.as_matrix().T).float() + obj_trans[:, 0:1] # Change
+            #     hand_trans = (hand_trans - obj_trans[:, 0:1]) @ torch.from_numpy(random_heading.as_matrix().T).float() + obj_trans[:, 0:1] # Change
                 
-                obj_trans = obj_trans + torch.from_numpy(random_pos_delta).float()
-                hand_trans = hand_trans + torch.from_numpy(random_pos_delta).float()
-            ############# Random rotation and translate of the object pose #############
+            #     obj_trans = obj_trans + torch.from_numpy(random_pos_delta).float()
+            #     hand_trans = hand_trans + torch.from_numpy(random_pos_delta).float()
+            # ############# Random rotation and translate of the object pose #############
 
             
             
@@ -236,36 +236,46 @@ class MotionLibSMPLObj(MotionLibSMPL):
             print(self.curr_motion_keys[:10], ".....")
         print("*********************************************************************************\n")
 
-
-        motion_data_list = self._motion_data_list[sample_idxes.cpu().numpy()]
-        mp.set_sharing_strategy('file_descriptor')
-
-        manager = mp.Manager()
-        queue = manager.Queue()
-        num_jobs = min(mp.cpu_count(), 32)
-
-        if num_jobs <= 8 or not self.multi_thread:
-            num_jobs = 1
-        if flags.debug:
-            num_jobs = 1
-        # num_jobs = 1
-        
-        res_acc = {}  # using dictionary ensures order of the results.
-        jobs = motion_data_list
-        chunk = np.ceil(len(jobs) / num_jobs).astype(int)
+        jobs = motion_data_list = self._motion_data_list
         ids = np.arange(len(jobs))
+        res = self.load_motion_with_skeleton(
+            self.m_cfg, ids, jobs, skeleton_trees[:len(jobs)], gender_betas[:len(jobs)], self.mesh_parsers, self.m_cfg, None, 0
+        )
+        res_acc = {}
+        for ii in range(sample_idxes.cpu().numpy().shape[0]):
+            res_acc[ii] = res[sample_idxes.cpu().numpy()[ii]]
 
-        jobs = [(self.m_cfg, ids[i:i + chunk], jobs[i:i + chunk], skeleton_trees[i:i + chunk], gender_betas[i:i + chunk],  self.mesh_parsers, self.m_cfg) for i in range(0, len(jobs), chunk)]
-        job_args = [jobs[i] for i in range(len(jobs))]
-        for i in range(1, len(jobs)):
-            worker_args = (*job_args[i], queue, i)
-            worker = mp.Process(target=self.load_motion_with_skeleton, args=worker_args)
-            worker.start()
-        res_acc.update(self.load_motion_with_skeleton(*jobs[0], None, 0))
+        # motion_data_list = self._motion_data_list[sample_idxes.cpu().numpy()]
+        # mp.set_sharing_strategy('file_descriptor')
 
-        for i in tqdm(range(len(jobs) - 1)):
-            res = queue.get()
-            res_acc.update(res)
+        # manager = mp.Manager()
+        # queue = manager.Queue()
+        # num_jobs = min(mp.cpu_count(), 32)
+
+        # import pdb; pdb.set_trace()
+
+        # if num_jobs <= 8 or not self.multi_thread:
+        #     num_jobs = 1
+        # if flags.debug:
+        #     num_jobs = 1
+        # # num_jobs = 1
+        
+        # res_acc = {}  # using dictionary ensures order of the results.
+        # jobs = motion_data_list
+        # chunk = np.ceil(len(jobs) / num_jobs).astype(int)
+        # ids = np.arange(len(jobs))
+
+        # jobs = [(self.m_cfg, ids[i:i + chunk], jobs[i:i + chunk], skeleton_trees[i:i + chunk], gender_betas[i:i + chunk],  self.mesh_parsers, self.m_cfg) for i in range(0, len(jobs), chunk)]
+        # job_args = [jobs[i] for i in range(len(jobs))]
+        # for i in range(1, len(jobs)):
+        #     worker_args = (*job_args[i], queue, i)
+        #     worker = mp.Process(target=self.load_motion_with_skeleton, args=worker_args)
+        #     worker.start()
+        # res_acc.update(self.load_motion_with_skeleton(*jobs[0], None, 0))
+
+        # for i in tqdm(range(len(jobs) - 1)):
+        #     res = queue.get()
+        #     res_acc.update(res)
 
         for f in tqdm(range(len(res_acc))):
             motion_file_data, curr_motion = res_acc[f]
@@ -351,6 +361,7 @@ class MotionLibSMPLObj(MotionLibSMPL):
         
         self.get_contact_hand_pose_all()
         print(f"Loaded {num_motions:d} motions with a total length of {total_len:.3f}s and {self.gts.shape[0]} frames.")
+
         return motions
 
     def get_use_hand_label(self, motion_ids):

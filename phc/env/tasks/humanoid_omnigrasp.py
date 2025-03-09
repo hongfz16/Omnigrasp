@@ -107,8 +107,10 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         self.v_template = torch.from_numpy(data_seq[data_key]['v_template']).float()
 
         self.table_remove_frame = torch.zeros(self.num_envs).to(self.device) # 45 frames, 1.5 second
-        self.table_remove_frame[:] = cfg["env"].get("table_remove_frame", 45)
-        self.grasp_start_frame = cfg["env"].get("grasp_start_frame", 30)
+        # self.table_remove_frame[:] = cfg["env"].get("table_remove_frame", 45)
+        self.table_remove_frame[:] = cfg["env"].get("table_remove_frame", 173)
+        # self.grasp_start_frame = cfg["env"].get("grasp_start_frame", 30)
+        self.grasp_start_frame = cfg["env"].get("grasp_start_frame", 173)
         self.check_rot_reset = cfg["env"].get("check_rot_reset", False)
         self.close_distance_pregrasp = cfg["env"].get("close_distance_pregrasp", 0.2)
         self.close_distance_contact = cfg["env"].get("close_distance_contact", 0.1)
@@ -359,6 +361,9 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             
             if self.cfg.env.fixed_latent:
                 obs_size += 1
+
+            if self.cfg.env.add_timestamp:
+                obs_size += self.cfg.env.pe_dimension
                 
         return obs_size
     
@@ -493,7 +498,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
     def _reset_target(self, env_ids):
         n = len(env_ids)
         motion_res = self._get_state_from_motionlib_cache(self._sampled_motion_ids[env_ids], self._motion_start_times[env_ids]) 
-            
+
         ref_o_ang_vel, ref_o_lin_vel, ref_o_rb_rot, ref_o_rb_pos = motion_res['o_ang_vel'][:, :1], motion_res['o_lin_vel'][:, :1], motion_res['o_rb_rot'][:, :1], motion_res['o_rb_pos'][:, :1]
         
         self._obj_states[env_ids, :3] = ref_o_rb_pos[:, 0]
@@ -504,7 +509,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         
         static_o_ang_vel, static_o_lin_vel, static_o_rb_rot, static_o_rb_pos = motion_res['o_ang_vel'][:, 1:], motion_res['o_lin_vel'][:, 1:], motion_res['o_rb_rot'][:, 1:], motion_res['o_rb_pos'][:, 1:]
         self._table_states[env_ids, :3] = static_o_rb_pos[:, 0] 
-        self._table_states[env_ids, 2] -= (0.1 - 0.005481)/2 # This is becuase I am using a thicker table. 
+        # self._table_states[env_ids, 2] -= (0.1 - 0.005481)/2 # This is becuase I am using a thicker table. 
         self._table_states[env_ids, 3:7] = static_o_rb_rot[:, 0]
         self._table_states[env_ids, 7:10] = static_o_lin_vel[:, 0]
         self._table_states[env_ids, 10:13] = static_o_ang_vel[:, 0]
@@ -638,6 +643,34 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             
             obs = torch.cat([obs, use_hand_label], dim=-1)
             
+
+        import math
+        def positional_encoding(timestamp: torch.Tensor, K: int) -> torch.Tensor:
+            """
+            Encode timestamps using sinusoidal positional embeddings.
+            
+            Args:
+                timestamp (torch.Tensor): Input tensor of shape [N, 1] with values between 0 and 1.
+                K (int): Dimension of the positional embedding.
+            
+            Returns:
+                torch.Tensor: Encoded tensor of shape [N, K].
+            """
+            N = timestamp.shape[0]
+            
+            # Create position indices [0, 1, ..., K/2 - 1]
+            div_term = torch.exp(torch.arange(0, K, 2, dtype=torch.float32) * (-math.log(10000.0) / K)).to(timestamp.device)
+            
+            # Compute sinusoidal embeddings
+            pe = torch.zeros(N, K, dtype=torch.float32).to(timestamp.device)
+            pe[:, 0::2] = torch.sin(timestamp * div_term)  # Apply sine to even indices
+            pe[:, 1::2] = torch.cos(timestamp * div_term)  # Apply cosine to odd indices
+            
+            return pe
+
+        if self.cfg.env.add_timestamp:
+            obs = torch.cat([obs, positional_encoding(self.progress_buf[env_ids, None] / self.max_episode_length, self.cfg.env.pe_dimension)], dim=-1)
+
         if self.cfg.env.fixed_latent:
             obs = torch.cat([obs, env_ids[:, None]], dim=-1)
             
@@ -733,6 +766,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         grab_reset, grab_terminate = compute_humanoid_grab_reset(self.reset_buf, self.progress_buf, self._contact_forces, self._contact_body_ids, \
                                                                                obj_pos, obj_rot,  ref_o_rb_pos, ref_o_rb_rot,  hand_pos, pass_time, self._enable_early_termination,
                                                                                self.grab_termination_disatnce, flags.no_collision_check, self.check_rot_reset and (not flags.im_eval))
+
         if flags.im_eval:
             if self.has_data:
                 motion_res = self._get_state_from_motionlib_cache(self._sampled_motion_ids, torch.zeros_like(time))
@@ -750,7 +784,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             self.success_lift = torch.logical_or(self.eval_time_coutner > (0.5 / self.dt), self.success_lift) 
             
         
-        
+        # if torch.any(grab_reset):
+        #     import pdb; pdb.set_trace()
         
         self.reset_buf[:], self._terminate_buf[:] = torch.logical_or(self.reset_buf, grab_reset), torch.logical_or(self._terminate_buf, grab_terminate)
         
@@ -758,7 +793,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         is_recovery = torch.logical_and(~pass_time, self._cycle_counter > 0)  # pass time should override the cycle counter.
         self.reset_buf[is_recovery] = 0
         self._terminate_buf[is_recovery] = 0
-        
+
         return
 
     def _reset_ref_state_init(self, env_ids):
@@ -1313,7 +1348,7 @@ def compute_humanoid_grab_reset(reset_buf, progress_buf, contact_buf, contact_bo
     terminated = torch.zeros_like(reset_buf)
     if (enable_early_termination):
         has_fallen = torch.any(torch.norm(obj_pos - ref_obj_pos, dim=-1) > termination_distance, dim=-1) 
-            
+        # print(torch.norm(obj_pos - ref_obj_pos, dim=-1).mean(), torch.norm(obj_pos - ref_obj_pos, dim=-1).max(), torch.norm(obj_pos - ref_obj_pos, dim=-1).min(), has_fallen.sum())
         
         if check_rot_reset:
             diff_global_body_rot = torch_utils.quat_mul(ref_obj_rot, torch_utils.quat_conjugate(obj_rot))
@@ -1328,8 +1363,6 @@ def compute_humanoid_grab_reset(reset_buf, progress_buf, contact_buf, contact_bo
         if disableCollision:
             has_fallen[:] = False
         terminated = torch.where(has_fallen, torch.ones_like(reset_buf), terminated)
-        
-        
         
         # if (contact_buf.abs().sum(dim=-1)[0] > 0).sum() > 2:
         #     np.set_printoptions(precision=4, suppress=1)
