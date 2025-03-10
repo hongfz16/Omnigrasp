@@ -77,7 +77,8 @@ params:
     max_epochs: 10000000
     save_best_after: 100
     save_frequency: 1000
-    eval_frequency: 250
+    # eval_frequency: 250
+    eval_frequency: 2500
     print_stats: False
     save_intermediate: True
     entropy_coef: 0.0

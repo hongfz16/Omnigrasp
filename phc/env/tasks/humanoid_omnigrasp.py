@@ -130,6 +130,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         self._cycle_counter = torch.zeros(self.num_envs, device=self.device, dtype=torch.int)
         self.eval_time_coutner =torch.zeros(self.num_envs, device=self.device, dtype=torch.int)
 
+        self._track_body_ids = self._build_key_body_ids_tensor(cfg.env.control_bodies)
         self._hand_body_ids = self._build_key_body_ids_tensor(cfg.env.hand_bodies)
         self._fingertip_body_ids = self._build_key_body_ids_tensor(cfg.env.fingertip_bodies)
         self._hand_pos_prev = torch.zeros((self.num_envs, len(self._hand_body_ids), 3)).to(self.device)    
@@ -673,8 +674,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
 
         if self.cfg.env.fixed_latent:
             obs = torch.cat([obs, env_ids[:, None]], dim=-1)
-            
-            
+        
         return obs
     
     def get_running_mean_size(self):
@@ -700,12 +700,12 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         hand_vel = self._rigid_body_vel[:, self._hand_body_ids, :]
         hand_ang_vel = self._rigid_body_ang_vel[:, self._hand_body_ids, :]
         
-        motion_times = self.progress_buf * self.dt + self._motion_start_times 
+        motion_times = self.progress_buf * self.dt + self._motion_start_times
         
         motion_res = self._traj_gen.get_motion_state(self._sampled_motion_ids, motion_times)
         
         ref_o_ang_vel, ref_o_lin_vel, ref_o_rb_rot, ref_o_rb_pos = motion_res['o_ang_vel'][:, :1], motion_res['o_lin_vel'][:, :1], motion_res['o_rb_rot'][:, :1], motion_res['o_rb_pos'][:, :1]
-        
+
         hand_contact_force = self._contact_forces[:, self._hand_body_ids, :]
         table_removed_flag = self.progress_buf > self.table_remove_frame
         table_removed = self.all_env_ids[table_removed_flag]
@@ -715,12 +715,12 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         
         grab_reward, grab_reward_raw  = compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_lin_vel, obj_ang_vel,  ref_o_rb_pos, ref_o_rb_rot, ref_o_lin_vel, ref_o_ang_vel,  contact_filter, self.reward_specs)
         
-        if self.cfg.env.get("pregrasp_reward", True):
-            contact_hand_dict = self._motion_lib.get_contact_hand_pose(self._sampled_motion_ids)
-            ref_contact_hand_pos, ref_contact_hand_rot, ref_contact_hand_vel, ref_contact_hand_ang_vel, contact_ref_obj_pos = contact_hand_dict['contact_hand_trans'],  contact_hand_dict['contact_hand_rot'], contact_hand_dict['contact_hand_vel'], contact_hand_dict['contact_hand_ang_vel'], contact_hand_dict['contact_ref_obj_pos']
-            pregrasp_reward, pregrasp_reward_raw = compute_pregrasp_reward_time(root_pos, root_rot, hand_pos, hand_rot, hand_vel, hand_ang_vel, ref_contact_hand_pos, ref_contact_hand_rot, ref_contact_hand_vel, ref_contact_hand_ang_vel,  contact_ref_obj_pos, self._hand_pos_prev, self.close_distance_pregrasp,  self.reward_specs)
-            pass_contact_time = motion_times > self.grasp_start_frame * self.dt
-            grab_reward[~pass_contact_time] = pregrasp_reward[~pass_contact_time]
+        # if self.cfg.env.get("pregrasp_reward", True):
+        #     contact_hand_dict = self._motion_lib.get_contact_hand_pose(self._sampled_motion_ids)
+        #     ref_contact_hand_pos, ref_contact_hand_rot, ref_contact_hand_vel, ref_contact_hand_ang_vel, contact_ref_obj_pos = contact_hand_dict['contact_hand_trans'],  contact_hand_dict['contact_hand_rot'], contact_hand_dict['contact_hand_vel'], contact_hand_dict['contact_hand_ang_vel'], contact_hand_dict['contact_ref_obj_pos']
+        #     pregrasp_reward, pregrasp_reward_raw = compute_pregrasp_reward_time(root_pos, root_rot, hand_pos, hand_rot, hand_vel, hand_ang_vel, ref_contact_hand_pos, ref_contact_hand_rot, ref_contact_hand_vel, ref_contact_hand_ang_vel,  contact_ref_obj_pos, self._hand_pos_prev, self.close_distance_pregrasp,  self.reward_specs)
+        #     pass_contact_time = motion_times > self.grasp_start_frame * self.dt
+        #     grab_reward[~pass_contact_time] = pregrasp_reward[~pass_contact_time]
 
         self.rew_buf[:], self.reward_raw =  grab_reward , torch.cat([grab_reward_raw], dim=-1)
         
@@ -743,6 +743,25 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             self.rew_buf[:] = self.rew_buf + airtime_reward
             self.reward_raw = torch.cat([self.reward_raw, airtime_reward[:, None]], dim=-1)
         
+        track_pos = self._rigid_body_pos[:, self._track_body_ids, :]
+        track_rot = self._rigid_body_rot[:, self._track_body_ids, :]
+        track_vel = self._rigid_body_vel[:, self._track_body_ids, :]
+        track_ang_vel = self._rigid_body_ang_vel[:, self._track_body_ids, :]
+
+        motion_res = self._get_state_from_motionlib_cache(self._sampled_motion_ids, motion_times)
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, smpl_params, limb_weights, pose_aa, ref_rb_pos, ref_rb_rot, ref_body_vel, ref_body_ang_vel = \
+                motion_res["root_pos"], motion_res["root_rot"], motion_res["dof_pos"], motion_res["root_vel"], motion_res["root_ang_vel"], motion_res["dof_vel"], \
+                motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
+        ref_track_pos = ref_rb_pos[:, self._track_body_ids, :]
+        ref_track_rot = ref_rb_rot[:, self._track_body_ids, :]
+        ref_track_vel = ref_body_vel[:, self._track_body_ids, :]
+        ref_track_ang_vel = ref_body_ang_vel[:, self._track_body_ids, :]
+
+        track_reward, track_reward_raw = compute_imitation_reward(track_pos, track_rot, track_vel, track_ang_vel, ref_track_pos, ref_track_rot, ref_track_vel, ref_track_ang_vel, self.reward_specs)
+
+        self.rew_buf[:] = self.rew_buf + track_reward
+        self.reward_raw = torch.cat([self.reward_raw, track_reward_raw], dim=-1)
+
         return
 
     def _compute_reset(self):
@@ -782,13 +801,22 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                 self.success_lift = torch.zeros(self.num_envs).to(self.device).bool()
             
             self.success_lift = torch.logical_or(self.eval_time_coutner > (0.5 / self.dt), self.success_lift) 
-            
-        
+
+
+        # self.reset_buf[:], self._terminate_buf[:] = torch.logical_or(self.reset_buf, grab_reset), torch.logical_or(self._terminate_buf, grab_terminate)
+          
+        motion_res = self._get_state_from_motionlib_cache(self._sampled_motion_ids, time) #, self._global_offset)
+
+        ref_root_pos, ref_root_rot, ref_dof_pos, ref_root_vel, root_ang_vel, dof_vel, smpl_params, limb_weights, pose_aa, ref_rb_pos, ref_rb_rot, ref_body_vel, ref_body_ang_vel = \
+                motion_res["root_pos"], motion_res["root_rot"], motion_res["dof_pos"], motion_res["root_vel"], motion_res["root_ang_vel"], motion_res["dof_vel"], \
+                motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
+
+        self.reset_buf[:], self._terminate_buf[:] = compute_humanoid_im_reset(  # Humanoid reset
+                self.reset_buf, self.progress_buf, self._contact_forces, self._contact_body_ids, self._rigid_body_pos[..., self._track_body_ids, :], ref_rb_pos[..., self._track_body_ids, :], pass_time, self._enable_early_termination, self._termination_distances[..., self._track_body_ids],
+                flags.no_collision_check, flags.im_eval and (not self.strict_eval))
+
         # if torch.any(grab_reset):
         #     import pdb; pdb.set_trace()
-        
-        self.reset_buf[:], self._terminate_buf[:] = torch.logical_or(self.reset_buf, grab_reset), torch.logical_or(self._terminate_buf, grab_terminate)
-        
         
         is_recovery = torch.logical_and(~pass_time, self._cycle_counter > 0)  # pass time should override the cycle counter.
         self.reset_buf[is_recovery] = 0
@@ -1393,3 +1421,68 @@ def compute_contact_force_obs(root_pos, root_rot, contact_forces_subset, upright
     contact_force_local = torch_utils.my_quat_rotate(heading_inv_rot_expand.view(-1, 4), contact_forces_subset.view(-1, 3)).view(B, -1)
     
     return contact_force_local
+
+@torch.jit.script
+def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_body_pos, ref_body_rot, ref_body_vel, ref_body_ang_vel, rwd_specs):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor,Tensor, Tensor, Dict[str, float]) -> Tuple[Tensor, Tensor]
+    k_pos, k_rot, k_vel, k_ang_vel = rwd_specs["k_pos"], rwd_specs["k_rot"], rwd_specs["k_vel"], rwd_specs["k_ang_vel"]
+    w_pos, w_rot, w_vel, w_ang_vel = rwd_specs["w_pos"], rwd_specs["w_rot"], rwd_specs["w_vel"], rwd_specs["w_ang_vel"]
+
+    # body position reward
+    diff_global_body_pos = ref_body_pos - body_pos
+    diff_body_pos_dist = (diff_global_body_pos**2).mean(dim=-1).mean(dim=-1)
+    r_body_pos = torch.exp(-k_pos * diff_body_pos_dist)
+
+    # body rotation reward
+    diff_global_body_rot = torch_utils.quat_mul(ref_body_rot, torch_utils.quat_conjugate(body_rot))
+    diff_global_body_angle = torch_utils.quat_to_angle_axis(diff_global_body_rot)[0]
+    diff_global_body_angle_dist = (diff_global_body_angle**2).mean(dim=-1)
+    r_body_rot = torch.exp(-k_rot * diff_global_body_angle_dist)
+
+    # body linear velocity reward
+    diff_global_vel = ref_body_vel - body_vel
+    diff_global_vel_dist = (diff_global_vel**2).mean(dim=-1).mean(dim=-1)
+    r_vel = torch.exp(-k_vel * diff_global_vel_dist)
+
+    # body angular velocity reward
+    diff_global_ang_vel = ref_body_ang_vel - body_ang_vel
+    diff_global_ang_vel_dist = (diff_global_ang_vel**2).mean(dim=-1).mean(dim=-1)
+    r_ang_vel = torch.exp(-k_ang_vel * diff_global_ang_vel_dist)
+
+    reward = w_pos * r_body_pos + w_rot * r_body_rot + w_vel * r_vel + w_ang_vel * r_ang_vel
+    reward_raw = torch.stack([r_body_pos, r_body_rot, r_vel, r_ang_vel], dim=-1)
+    # import ipdb
+    # ipdb.set_trace()
+    return reward, reward_raw
+
+@torch.jit.script
+def compute_humanoid_im_reset(reset_buf, progress_buf, contact_buf, contact_body_ids, rigid_body_pos, ref_body_pos, pass_time, enable_early_termination, termination_distance, disableCollision, use_mean):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, Tensor, bool, bool) -> Tuple[Tensor, Tensor]
+    terminated = torch.zeros_like(reset_buf)
+    if (enable_early_termination):
+        if use_mean:
+            has_fallen = torch.any(torch.norm(rigid_body_pos - ref_body_pos, dim=-1).mean(dim=-1, keepdim=True) > termination_distance[0], dim=-1)  # using average, same as UHC"s termination condition
+        else:
+            has_fallen = torch.any(torch.norm(rigid_body_pos - ref_body_pos, dim=-1) > termination_distance, dim=-1)  # using max
+        # first timestep can sometimes still have nonzero contact forces
+        # so only check after first couple of steps
+        has_fallen *= (progress_buf > 1)
+        if disableCollision:
+            has_fallen[:] = False
+        terminated = torch.where(has_fallen, torch.ones_like(reset_buf), terminated)
+        
+        # if (contact_buf.abs().sum(dim=-1)[0] > 0).sum() > 2:
+        #     np.set_printoptions(precision=4, suppress=1)
+        #     print(contact_buf.numpy(), contact_buf.abs().sum(dim=-1)[0].nonzero().squeeze())
+        #     import ipdb; ipdb.set_trace()
+            
+        # import ipdb; ipdb.set_trace()
+        # if terminated.sum() > 0:
+        #     import ipdb; ipdb.set_trace()
+        #     print("Fallen")
+
+    reset = torch.where(pass_time, torch.ones_like(reset_buf), terminated)
+    # import ipdb
+    # ipdb.set_trace()
+
+    return reset, terminated
