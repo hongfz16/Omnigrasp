@@ -98,7 +98,10 @@ python phc/run_hydra.py  \
 ```
 
 ```
-CUDA_VISIBLE_DEVICES=0 python phc/run_hydra.py project_name=OmniGrasp   exp_name=omnigrasp_otter_001 learning=omnigrasp_rnn env=env_x_grab_z env.task=HumanoidOmniGraspZ env.motion_file=sample_data/Otter_sample_w_bg.pkl  env.models=['output/HumanoidIm/pulse_x_omnigrasp/Humanoid.pth']   env.numTrajSamples=20 env.trajSampleTimestepInv=15 robot=smplx_humanoid sim=hand_sim env.num_envs=768 learning.params.config.minibatch_size=4096 epoch=-1 env.add_timestamp=False
+CUDA_VISIBLE_DEVICES=0 python phc/run_hydra.py project_name=OmniGrasp   exp_name=omnigrasp_otter_001_from_scratch learning=omnigrasp_rnn env=env_x_grab_z env.task=HumanoidOmniGraspZ env.motion_file=sample_data/Otter_sample_w_bg.pkl  env.models=['output/HumanoidIm/pulse_x_omnigrasp/Humanoid.pth']   env.numTrajSamples=20 env.trajSampleTimestepInv=15 robot=smplx_humanoid sim=hand_sim env.num_envs=768 learning.params.config.minibatch_size=4096 epoch=-1
+
+        if self.cfg.env.get("use_grab_reset", False):
+CUDA_VISIBLE_DEVICES=0 python phc/run_hydra.py project_name=OmniGrasp   exp_name=omnigrasp_otter_001_tracking_v2 learning=omnigrasp_rnn env=env_x_grab_z env.task=HumanoidOmniGraspZ env.motion_file=sample_data/Otter_sample_w_bg.pkl  env.models=['output/HumanoidIm/pulse_x_omnigrasp/Humanoid.pth']   env.numTrajSamples=20 env.trajSampleTimestepInv=15 robot=smplx_humanoid sim=hand_sim env.num_envs=768 learning.params.config.minibatch_size=4096 epoch=-1 env.use_track_obs=True env.use_track_reward=True env.use_grab_obs=False env.use_grab_reward=False 
 ```
 
 Rendering the above trajectory might be slow, to speed up, use less number of environments or disable object trajectory rendering by press "k". 

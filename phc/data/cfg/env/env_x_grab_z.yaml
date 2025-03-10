@@ -39,8 +39,14 @@ dyna_latent: False
 obj_rand_pos: True
 obj_rand_pos_extreme: False
 
-add_timestamp: True ################
-pe_dimension: 64
+add_timestamp: False ################
+pe_dimension: 64 ################
+use_track_obs: False ################
+use_track_reward: False ################
+use_track_reset: False ################
+use_grab_obs: True ################
+use_grab_reward: True ################
+use_grab_reset: True ################
 
 close_distance_pregrasp: 0.2
 close_distance_contact: 0.1
