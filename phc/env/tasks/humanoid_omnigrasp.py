@@ -154,7 +154,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
     def _setup_tensors(self):
         super()._setup_tensors()
         self._build_target_tensors()
-        # self._build_marker_state_tensors()
+        if self.cfg.env.get("draw_smpl_marker", False):
+            self._build_marker_state_tensors()
 
     def _build_traj_generator(self):
         num_envs = self.num_envs
@@ -397,7 +398,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
     def _build_env(self, env_id, env_ptr, humanoid_asset):
         super()._build_env(env_id, env_ptr, humanoid_asset)
         self._build_target(env_id, env_ptr)
-        # self._build_marker(env_id, env_ptr)
+        if self.cfg.env.get("draw_smpl_marker", False):
+            self._build_marker(env_id, env_ptr)
         return
     
     def _load_target_asset(self): 
@@ -415,7 +417,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
             asset_options.vhacd_enabled = True
             
-            asset_options.vhacd_params.max_convex_hulls = 512 #32 
+            asset_options.vhacd_params.max_convex_hulls = 32 
             asset_options.vhacd_params.max_num_vertices_per_ch = 72
             
             if "oakink" in obj_asset_root:
@@ -1047,7 +1049,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         return
 
     def _draw_task(self):
-        # self._update_marker()
+        if self.cfg.env.get("draw_smpl_marker", False):
+            self._update_marker()
         if not flags.real_traj:
             self.gym.clear_lines(self.viewer)        
             
