@@ -112,6 +112,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         self.table_remove_frame[:] = cfg["env"].get("table_remove_frame", 173)
         # self.grasp_start_frame = cfg["env"].get("grasp_start_frame", 30)
         self.grasp_start_frame = cfg["env"].get("grasp_start_frame", 173)
+        print("grasp start frame:", self.grasp_start_frame)
         self.check_rot_reset = cfg["env"].get("check_rot_reset", False)
         self.close_distance_pregrasp = cfg["env"].get("close_distance_pregrasp", 0.2)
         self.close_distance_contact = cfg["env"].get("close_distance_contact", 0.1)
