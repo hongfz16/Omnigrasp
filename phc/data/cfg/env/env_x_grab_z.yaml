@@ -2,7 +2,8 @@ task: HumanoidGrabZ
 motion_file: ""
 num_envs: 3072
 env_spacing:  5
-episode_length: 1067
+# episode_length: 1067
+episode_length: 937
 isFlagrun: False
 enable_debug_vis: False
 kp_scale: 1
