@@ -517,7 +517,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         
         static_o_ang_vel, static_o_lin_vel, static_o_rb_rot, static_o_rb_pos = motion_res['o_ang_vel'][:, 1:], motion_res['o_lin_vel'][:, 1:], motion_res['o_rb_rot'][:, 1:], motion_res['o_rb_pos'][:, 1:]
         self._table_states[env_ids, :3] = static_o_rb_pos[:, 0] 
-        self._table_states[env_ids, 2] -= (0.1 - 0.005481)/2 # This is becuase I am using a thicker table. 
+        # self._table_states[env_ids, 2] -= (0.1 - 0.005481)/2 # This is becuase I am using a thicker table. 
+        # self._table_states[env_ids, 2] -= 0.1 # This is becuase I am using a thicker table. 
         self._table_states[env_ids, 3:7] = static_o_rb_rot[:, 0]
         self._table_states[env_ids, 7:10] = static_o_lin_vel[:, 0]
         self._table_states[env_ids, 10:13] = static_o_ang_vel[:, 0]
@@ -1099,6 +1100,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             
             motion_times_steps = ((self.progress_buf[env_ids, None] + 1) * self.dt + time_internals + self._motion_start_times[env_ids, None]).flatten()  # Future poses
             env_ids_steps = self._sampled_motion_ids[env_ids].repeat_interleave(time_steps)
+
+            # import pdb; pdb.set_trace()
 
             if flags.im_eval and self.has_data:
                 motion_res = self._get_state_from_motionlib_cache(env_ids_steps, motion_times_steps)  # pass in the env_ids such that the motion is in synced.
