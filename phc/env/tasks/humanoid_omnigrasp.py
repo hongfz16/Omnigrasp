@@ -750,7 +750,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         self.reward_raw = None
         if self.cfg.env.get("use_grab_reward", False):
             grab_reward, grab_reward_raw  = compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_lin_vel, obj_ang_vel,  ref_o_rb_pos, ref_o_rb_rot, ref_o_lin_vel, ref_o_ang_vel,  contact_filter, self.reward_specs)
-            
+
             if self.cfg.env.get("pregrasp_reward", True):
                 contact_hand_dict = self._motion_lib.get_contact_hand_pose(self._sampled_motion_ids)
                 ref_contact_hand_pos, ref_contact_hand_rot, ref_contact_hand_vel, ref_contact_hand_ang_vel, contact_ref_obj_pos = contact_hand_dict['contact_hand_trans'],  contact_hand_dict['contact_hand_rot'], contact_hand_dict['contact_hand_vel'], contact_hand_dict['contact_hand_ang_vel'], contact_hand_dict['contact_ref_obj_pos']
