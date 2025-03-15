@@ -109,9 +109,9 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
 
         self.table_remove_frame = torch.zeros(self.num_envs).to(self.device) # 45 frames, 1.5 second
         # self.table_remove_frame[:] = cfg["env"].get("table_remove_frame", 45)
-        self.table_remove_frame[:] = cfg["env"].get("table_remove_frame", 173)
+        self.table_remove_frame[:] = cfg["env"].get("table_remove_frame", 40)
         # self.grasp_start_frame = cfg["env"].get("grasp_start_frame", 30)
-        self.grasp_start_frame = cfg["env"].get("grasp_start_frame", 173)
+        self.grasp_start_frame = cfg["env"].get("grasp_start_frame", 25)
         print("grasp start frame:", self.grasp_start_frame)
         self.check_rot_reset = cfg["env"].get("check_rot_reset", False)
         self.close_distance_pregrasp = cfg["env"].get("close_distance_pregrasp", 0.2)
@@ -883,8 +883,10 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         if env_ids is None:
             env_ids = self.all_env_ids
             
-        if env_ids.shape[0] != 0:
-            import pdb; pdb.set_trace()
+        # if env_ids.shape[0] != 0:
+        #     import pdb; pdb.set_trace()
+
+        # print("Remove table function called!", env_ids, self.progress_buf, self.table_remove_frame)
 
         self._table_states[env_ids, 2] = 100
         env_ids_int32 = self._table_obj_ids[env_ids]
@@ -928,7 +930,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         if self.save_kin_info: # this needs to happen BEFORE the next time-step observation is computed, to collect the "current time-step target"
             self.extras['kin_dict'] = self.kin_dict
             
-        # self.remove_table(env_ids=self.all_env_ids[self.progress_buf > self.table_remove_frame ])
+        self.remove_table(env_ids=self.all_env_ids[self.progress_buf > self.table_remove_frame])
         
         
         super().post_physics_step()
@@ -1371,6 +1373,18 @@ def check_contact(hand_contact_force, obj_contact_forces, hand_pos, obj_pos, obj
     proxy_check = torch.logical_and(pos_filter, vel_filter)
     
     contact_filter = torch.logical_and(obj_contact_force_sum, proxy_check) # 
+
+    # print("obj_contact_force_sum", obj_contact_force_sum)
+    # print("hand_pos_diff", hand_pos_diff)
+    # print("table_no_contact", table_no_contact)
+    # print("obj_has_contact", obj_has_contact)
+    # print("object_lifted", object_lifted)
+    # print("pos_filter", pos_filter)
+    # print("vel_filter", vel_filter)
+    # print("proxy_check", proxy_check)
+    # print("contact_filter", contact_filter)
+
+    # import pdb; pdb.set_trace()
 
     return contact_filter
 
