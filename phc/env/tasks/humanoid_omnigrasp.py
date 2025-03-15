@@ -48,6 +48,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         
         # self._track_bodies = cfg["env"].get("trackBodies", self._full_track_bodies)
         self._track_bodies = cfg["env"].get("control_bodies", self._full_track_bodies)
+        print("Tracking: ", self._track_bodies)
         self._track_bodies_id = self._build_key_body_ids_tensor(self._track_bodies)
         self._reset_bodies = cfg["env"].get("reset_bodies", self._track_bodies)
         self._reset_bodies_id = self._build_key_body_ids_tensor(self._reset_bodies)
@@ -536,7 +537,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         if (self._state_init == HumanoidAMP.StateInit.Random or self._state_init == HumanoidAMP.StateInit.Hybrid):
             motion_times = self._sample_time(self._sampled_motion_ids[env_ids])
         elif (self._state_init == HumanoidAMP.StateInit.Start):
-            if self.cfg.env.get("flex_start", True):
+            # if self.cfg.env.get("flex_start", True):
+            if self.cfg.env.get("flex_start", False):
                 motion_times = self._sample_time(self._sampled_motion_ids[env_ids])
                 
                 motion_times = torch.clamp(motion_times, torch.zeros_like(motion_times),  self._motion_lib.get_contact_time(self._sampled_motion_ids[env_ids]) - 0.5) # Start before contact happens.
@@ -861,7 +863,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
 
         # if torch.any(grab_reset):
         #     import pdb; pdb.set_trace()
-        
+
         is_recovery = torch.logical_and(~pass_time, self._cycle_counter > 0)  # pass time should override the cycle counter.
         self.reset_buf[is_recovery] = 0
         self._terminate_buf[is_recovery] = 0
