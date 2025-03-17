@@ -49,6 +49,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         # self._track_bodies = cfg["env"].get("trackBodies", self._full_track_bodies)
         self._track_bodies = cfg["env"].get("control_bodies", self._full_track_bodies)
         print("Tracking: ", self._track_bodies)
+        print("Pregrasp reward: ", self.cfg.env.get("pregrasp_reward", True))
         self._track_bodies_id = self._build_key_body_ids_tensor(self._track_bodies)
         self._reset_bodies = cfg["env"].get("reset_bodies", self._track_bodies)
         self._reset_bodies_id = self._build_key_body_ids_tensor(self._reset_bodies)
