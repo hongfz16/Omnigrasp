@@ -638,7 +638,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                 if self.cfg.env.get("contact_obs_bi", False):
                     import ipdb; ipdb.set_trace()
                     print('shouldnt have both')
-                    
+
             elif self.cfg.env.get("contact_obs_bi", False):
                 contact_forces_fingers  = contact_forces[:, self._contact_sensor_body_ids]
                 contact_obs = (contact_forces_fingers.abs().sum(dim=-1) > 0).float()
@@ -747,7 +747,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         table_removed = self.all_env_ids[table_removed_flag]
         
         contact_filter = check_contact(hand_contact_force, obj_contact_forces, hand_pos, obj_pos, obj_lin_vel, table_removed, self.close_distance_contact)
-        
+        print(self.progress_buf)
         self.rew_buf[:] = 0
         self.reward_raw = None
         if self.cfg.env.get("use_grab_reward", False):
