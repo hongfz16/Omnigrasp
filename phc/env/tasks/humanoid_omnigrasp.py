@@ -64,6 +64,10 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         data_seq = joblib.load(cfg.env.motion_file)
         self.pkl_data = data_seq
         self.data_key = data_key = list(data_seq.keys())[0]
+
+        self.contact_data = data_seq['Otter']['obj_data']['contact_info']
+        if not cfg['env'].get("use_release_reward", False):
+            self.contact_data[:] = 1
         
         self.gender  = data_seq[data_key]["gender"]
         self.gender_number = torch.zeros(1)
@@ -752,7 +756,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         self.rew_buf[:] = 0
         self.reward_raw = None
         if self.cfg.env.get("use_grab_reward", False):
-            grab_reward, grab_reward_raw  = compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_lin_vel, obj_ang_vel,  ref_o_rb_pos, ref_o_rb_rot, ref_o_lin_vel, ref_o_ang_vel,  contact_filter, self.reward_specs)
+            grab_reward, grab_reward_raw  = compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_lin_vel, obj_ang_vel,  ref_o_rb_pos, ref_o_rb_rot, ref_o_lin_vel, ref_o_ang_vel,  contact_filter, self.contact_data[self.progress_buf], self.reward_specs)
 
             if self.cfg.env.get("pregrasp_reward", True):
                 contact_hand_dict = self._motion_lib.get_contact_hand_pose(self._sampled_motion_ids)
@@ -1391,8 +1395,8 @@ def check_contact(hand_contact_force, obj_contact_forces, hand_pos, obj_pos, obj
 
     return contact_filter
 
-@torch.jit.script
-def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_vel,  ref_obj_pos, ref_obj_rot, ref_body_vel, ref_body_ang_vel, contact_filter, rwd_specs):
+# @torch.jit.script
+def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_vel,  ref_obj_pos, ref_obj_rot, ref_body_vel, ref_body_ang_vel, contact_filter, curr_contact_obs, rwd_specs):
      # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor,Tensor,Tensor, Tensor, Tensor, Tensor, Dict[str, float]) -> Tuple[Tensor, Tensor]
     k_pos, k_rot, k_vel, k_ang_vel = rwd_specs["k_pos"], rwd_specs["k_rot"], rwd_specs["k_vel"], rwd_specs["k_ang_vel"]
     w_pos, w_rot, w_vel, w_ang_vel, w_conctact = rwd_specs["w_pos"], rwd_specs["w_rot"], rwd_specs["w_vel"], rwd_specs["w_ang_vel"], rwd_specs["w_conctact"]
@@ -1421,10 +1425,10 @@ def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_v
     r_contact_lifted = contact_filter.float() 
 
     # # r_close = torch.exp(-k_pos * (hand_pos_diff.min(dim = -1).values **2))
-
+    contact_symbol = torch.where(torch.from_numpy(curr_contact_obs).to(r_contact_lifted.device) == 0, torch.zeros_like(r_contact_lifted) - 1, torch.zeros_like(r_contact_lifted) + 1)
     # ##### pos_filter makes sure that no reward is given if the hand is too far from the object.
     # # reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact  + r_close * w_close
-    reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact  
+    reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact * contact_symbol
     # # reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel, r_close], dim=-1)
     reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel], dim=-1)
     
