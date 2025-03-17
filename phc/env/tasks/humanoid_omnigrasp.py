@@ -937,7 +937,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         if self.save_kin_info: # this needs to happen BEFORE the next time-step observation is computed, to collect the "current time-step target"
             self.extras['kin_dict'] = self.kin_dict
             
-        self.remove_table(env_ids=self.all_env_ids[self.progress_buf > self.table_remove_frame])
+        # self.remove_table(env_ids=self.all_env_ids[self.progress_buf > self.table_remove_frame])
         
         
         super().post_physics_step()
@@ -1426,6 +1426,7 @@ def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_v
 
     # # r_close = torch.exp(-k_pos * (hand_pos_diff.min(dim = -1).values **2))
     contact_symbol = torch.where(torch.from_numpy(curr_contact_obs).to(r_contact_lifted.device) == 0, torch.zeros_like(r_contact_lifted) - 1, torch.zeros_like(r_contact_lifted) + 1)
+    # print(contact_symbol, r_contact_lifted)
     # ##### pos_filter makes sure that no reward is given if the hand is too far from the object.
     # # reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact  + r_close * w_close
     reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact * contact_symbol
