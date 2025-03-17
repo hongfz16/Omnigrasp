@@ -937,7 +937,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         if self.save_kin_info: # this needs to happen BEFORE the next time-step observation is computed, to collect the "current time-step target"
             self.extras['kin_dict'] = self.kin_dict
             
-        self.remove_table(env_ids=self.all_env_ids[self.progress_buf > self.table_remove_frame])
+        # self.remove_table(env_ids=self.all_env_ids[self.progress_buf > self.table_remove_frame])
         
         
         super().post_physics_step()
