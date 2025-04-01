@@ -65,7 +65,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         self.pkl_data = data_seq
         self.data_key = data_key = list(data_seq.keys())[0]
 
-        self.contact_data = data_seq['Otter']['obj_data']['contact_info']
+        # self.contact_data = data_seq['Otter']['obj_data']['contact_info']
+        self.contact_data = data_seq['Box1']['obj_data']['contact_info']
         if not cfg['env'].get("use_release_reward", False):
             self.contact_data[:] = 1
         
@@ -176,7 +177,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             self._traj_gen = traj_generator_3d_orig.TrajGenerator3D(num_envs, episode_dur, num_verts, self.device, self.cfg.env.traj_gen, starting_still_dt=self.table_remove_frame * self.dt)
         else:
             # self._traj_gen = traj_generator_3d.TrajGenerator3D(num_envs, episode_dur, num_verts, self.device, self.cfg.env.traj_gen, starting_still_dt=self.table_remove_frame * self.dt)
-            num_verts = self.pkl_data["Otter"]['obj_data']['obj_pose'].shape[0]
+            # num_verts = self.pkl_data["Otter"]['obj_data']['obj_pose'].shape[0]
+            num_verts = self.pkl_data["Box1"]['obj_data']['obj_pose'].shape[0]
             self._traj_gen = traj_generator_3d.TrajGenerator3DInFile(
                 num_envs, episode_dur, num_verts, self.device, self.cfg.env.traj_gen, self.pkl_data, starting_still_dt=self.table_remove_frame * self.dt
             )
@@ -459,7 +461,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         asset_options_fix.fix_base_link = True
         # asset_file = "table.urdf"
         # asset_file = "bg.urdf"
-        asset_file = "Otter-001.urdf"
+        # asset_file = "Otter-001.urdf"
+        asset_file = "Scene-003.urdf"
         
         _target_asset = self.gym.load_asset(self.sim, "phc/data/assets/urdf/grab/", asset_file, asset_options_fix)
         self._target_assets['table'] = _target_asset
