@@ -99,7 +99,8 @@ class MotionLibSMPLObj(MotionLibSMPL):
             # trans, trans_fix = MotionLibSMPL.fix_trans_height(pose_aa, trans, curr_gender_beta, mesh_parsers, fix_height_mode = fix_height)
 
             pose_quat_global = to_torch(pose_quat_global)
-            sk_state = SkeletonState.from_rotation_and_root_translation(skeleton_trees[f], pose_quat_global, trans, is_local=False)
+            # sk_state = SkeletonState.from_rotation_and_root_translation(skeleton_trees[f], pose_quat_global, trans, is_local=False)
+            sk_state = SkeletonState.from_rotation_and_root_translation(skeleton_trees[f], to_torch(curr_file['pose_quat'][start:end]), trans, is_local=True)
 
             curr_motion = SkeletonMotion.from_skeleton_state(sk_state, curr_file.get("fps", 30))
             
