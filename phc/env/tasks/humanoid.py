@@ -899,7 +899,8 @@ class Humanoid(BaseTask):
                 self.humanoid_shapes = torch.vstack(self.humanoid_shapes).to(self.device)
             else:
                 gender_beta, asset_file_real = self._create_smpl_humanoid_xml([0], robot, None, 0)[0]
-                sk_tree = SkeletonTree.from_mjcf(asset_file_real)
+                # sk_tree = SkeletonTree.from_mjcf(asset_file_real)
+                sk_tree = SkeletonTree.from_mjcf("phc/data/assets/mjcf/smplx_humanoid.xml")
 
                 humanoid_asset = self.gym.load_asset(self.sim, asset_root, asset_file_real, asset_options)
                 actuator_props = self.gym.get_asset_actuator_properties(humanoid_asset)
