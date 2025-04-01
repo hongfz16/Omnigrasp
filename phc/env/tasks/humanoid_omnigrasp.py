@@ -46,6 +46,10 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         if self.device_type == "cuda" or self.device_type == "GPU":
             self.device = "cuda" + ":" + str(self.device_id)
         
+        self.target_object_name = cfg["env"].get("target_object_name", "Otter")
+        print("Target Object Name:", self.target_object_name)
+        self.background_urdf_name = cfg["env"].get("background_urdf_name", "Otter-001.urdf")
+
         # self._track_bodies = cfg["env"].get("trackBodies", self._full_track_bodies)
         self._track_bodies = cfg["env"].get("control_bodies", self._full_track_bodies)
         print("Tracking: ", self._track_bodies)
@@ -66,7 +70,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         self.data_key = data_key = list(data_seq.keys())[0]
 
         # self.contact_data = data_seq['Otter']['obj_data']['contact_info']
-        self.contact_data = data_seq['Box1']['obj_data']['contact_info']
+        self.contact_data = data_seq[self.target_object_name]['obj_data']['contact_info']
         if not cfg['env'].get("use_release_reward", False):
             self.contact_data[:] = 1
         
@@ -178,7 +182,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         else:
             # self._traj_gen = traj_generator_3d.TrajGenerator3D(num_envs, episode_dur, num_verts, self.device, self.cfg.env.traj_gen, starting_still_dt=self.table_remove_frame * self.dt)
             # num_verts = self.pkl_data["Otter"]['obj_data']['obj_pose'].shape[0]
-            num_verts = self.pkl_data["Box1"]['obj_data']['obj_pose'].shape[0]
+            num_verts = self.pkl_data[self.target_object_name]['obj_data']['obj_pose'].shape[0]
             self._traj_gen = traj_generator_3d.TrajGenerator3DInFile(
                 num_envs, episode_dur, num_verts, self.device, self.cfg.env.traj_gen, self.pkl_data, starting_still_dt=self.table_remove_frame * self.dt
             )
@@ -462,7 +466,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         # asset_file = "table.urdf"
         # asset_file = "bg.urdf"
         # asset_file = "Otter-001.urdf"
-        asset_file = "Scene-003.urdf"
+        asset_file = self.background_urdf_name
         
         _target_asset = self.gym.load_asset(self.sim, "phc/data/assets/urdf/grab/", asset_file, asset_options_fix)
         self._target_assets['table'] = _target_asset
@@ -755,7 +759,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         table_removed = self.all_env_ids[table_removed_flag]
         
         contact_filter = check_contact(hand_contact_force, obj_contact_forces, hand_pos, obj_pos, obj_lin_vel, table_removed, self.close_distance_contact)
-        print(self.progress_buf)
+        # print(self.progress_buf)
         self.rew_buf[:] = 0
         self.reward_raw = None
         if self.cfg.env.get("use_grab_reward", False):
