@@ -19,7 +19,7 @@ power_usage_coefficient: 0.01
 slippage_coefficient: 0.3
 
 # shape_resampling_interval: 250
-shape_resampling_interval: 2500
+shape_resampling_interval: 25000
 auto_pmcp_soft: True
 obj_pmcp: True
 obj_pmcp_start: 999
