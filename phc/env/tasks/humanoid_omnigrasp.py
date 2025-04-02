@@ -1439,6 +1439,9 @@ def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_v
     # print(contact_symbol, r_contact_lifted)
     # ##### pos_filter makes sure that no reward is given if the hand is too far from the object.
     # # reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact  + r_close * w_close
+
+    # print(contact_filter, contact_symbol)
+
     reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact * contact_symbol
     # # reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel, r_close], dim=-1)
     reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel], dim=-1)
@@ -1501,16 +1504,25 @@ def compute_contact_force_obs(root_pos, root_rot, contact_forces_subset, upright
     
     return contact_force_local
 
-@torch.jit.script
+# @torch.jit.script
 def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_body_pos, ref_body_rot, ref_body_vel, ref_body_ang_vel, rwd_specs):
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor,Tensor, Tensor, Dict[str, float]) -> Tuple[Tensor, Tensor]
     k_pos, k_rot, k_vel, k_ang_vel = rwd_specs["k_pos"], rwd_specs["k_rot"], rwd_specs["k_vel"], rwd_specs["k_ang_vel"]
     w_pos, w_rot, w_vel, w_ang_vel = rwd_specs["w_pos"], rwd_specs["w_rot"], rwd_specs["w_vel"], rwd_specs["w_ang_vel"]
 
     # body position reward
-    diff_global_body_pos = ref_body_pos - body_pos
-    diff_body_pos_dist = (diff_global_body_pos**2).mean(dim=-1).mean(dim=-1)
-    r_body_pos = torch.exp(-k_pos * diff_body_pos_dist)
+    if ref_body_pos.shape[1]>3:
+        diff_global_body_pos = ref_body_pos[:,:3] - body_pos[:,:3]
+        diff_body_pos_dist = (diff_global_body_pos**2).mean(dim=-1).mean(dim=-1)
+
+        diff_global_body_pos_hand = ref_body_pos[:,3:] - body_pos[:,3:]
+        diff_body_pos_dist_hand = (diff_global_body_pos_hand**2).mean(dim=-1).mean(dim=-1) * 10
+
+        r_body_pos = (torch.exp(-k_pos * diff_body_pos_dist) + torch.exp(-k_pos * diff_body_pos_dist_hand))/2
+    else:
+        diff_global_body_pos = ref_body_pos[:,:3] - body_pos[:,:3]
+        diff_body_pos_dist = (diff_global_body_pos**2).mean(dim=-1).mean(dim=-1)
+        r_body_pos = torch.exp(-k_pos * diff_body_pos_dist)
 
     # body rotation reward
     diff_global_body_rot = torch_utils.quat_mul(ref_body_rot, torch_utils.quat_conjugate(body_rot))
