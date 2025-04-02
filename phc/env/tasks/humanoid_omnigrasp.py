@@ -762,7 +762,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         # print(self.progress_buf)
         self.rew_buf[:] = 0
         self.reward_raw = None
-        if self.cfg.env.get("use_grab_reward", False):
+        if self.cfg.env.get("use_grab_reward", True):
             grab_reward, grab_reward_raw  = compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_lin_vel, obj_ang_vel,  ref_o_rb_pos, ref_o_rb_rot, ref_o_lin_vel, ref_o_ang_vel,  contact_filter, self.contact_data[self.progress_buf], self.reward_specs)
 
             if self.cfg.env.get("pregrasp_reward", True):
@@ -792,6 +792,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             track_reward, track_reward_raw = compute_imitation_reward(track_pos, track_rot, track_vel, track_ang_vel, ref_track_pos, ref_track_rot, ref_track_vel, ref_track_ang_vel, self.reward_specs)
 
             self.rew_buf[:] = self.rew_buf + track_reward
+            self.rew_buf[self.rew_buf != track_reward] /= 2
             if self.reward_raw is not None:
                 self.reward_raw = torch.cat([self.reward_raw, track_reward_raw], dim=-1)
             else:
