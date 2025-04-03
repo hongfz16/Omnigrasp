@@ -759,7 +759,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         table_removed = self.all_env_ids[table_removed_flag]
         
         contact_filter = check_contact(hand_contact_force, obj_contact_forces, hand_pos, obj_pos, obj_lin_vel, table_removed, self.close_distance_contact)
-        # print(self.progress_buf)
+        print(self.progress_buf)
         self.rew_buf[:] = 0
         self.reward_raw = None
         if self.cfg.env.get("use_grab_reward", False):
@@ -1384,20 +1384,20 @@ def check_contact(hand_contact_force, obj_contact_forces, hand_pos, obj_pos, obj
     vel_filter = (torch.norm(obj_vel, dim= -1, p = 2) > 0.01)[:, 0]
     
     vel_filter = torch.logical_or(vel_filter, object_lifted) # velocity means the object is moved. The object lifted is for when the object is mid-air and stationary. 
-    vel_filter[table_removed]  = True # if table is removed, we do not need the proxy check anymore. 
+    # vel_filter[table_removed]  = True # if table is removed, we do not need the proxy check anymore. 
     proxy_check = torch.logical_and(pos_filter, vel_filter)
     
     contact_filter = torch.logical_and(obj_contact_force_sum, proxy_check) # 
 
-    # print("obj_contact_force_sum", obj_contact_force_sum)
-    # print("hand_pos_diff", hand_pos_diff)
-    # print("table_no_contact", table_no_contact)
-    # print("obj_has_contact", obj_has_contact)
-    # print("object_lifted", object_lifted)
-    # print("pos_filter", pos_filter)
-    # print("vel_filter", vel_filter)
-    # print("proxy_check", proxy_check)
-    # print("contact_filter", contact_filter)
+    print("obj_contact_force_sum", obj_contact_force_sum)
+    print("hand_pos_diff", hand_pos_diff)
+    print("table_no_contact", table_no_contact)
+    print("obj_has_contact", obj_has_contact)
+    print("object_lifted", object_lifted)
+    print("pos_filter", pos_filter)
+    print("vel_filter", vel_filter)
+    print("proxy_check", proxy_check)
+    print("contact_filter", contact_filter)
 
     # import pdb; pdb.set_trace()
 
@@ -1445,6 +1445,11 @@ def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_v
     reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact * contact_symbol
     # # reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel, r_close], dim=-1)
     reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel], dim=-1)
+
+    # if curr_contact_obs[0] == 1:
+    #     import pdb; pdb.set_trace()
+
+    print("grab_reward", r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel, contact_filter, r_contact_lifted, contact_symbol, (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) + r_contact_lifted * w_conctact * contact_symbol)
     
     # np.set_printoptions(precision=4, suppress=1)
     # print(reward_raw.detach().numpy())
@@ -1511,7 +1516,7 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
     w_pos, w_rot, w_vel, w_ang_vel = rwd_specs["w_pos"], rwd_specs["w_rot"], rwd_specs["w_vel"], rwd_specs["w_ang_vel"]
 
     # body position reward
-    if ref_body_pos.shape[1]>3:
+    if ref_body_pos.shape[1]==15:
         diff_global_body_pos = ref_body_pos[:,:3] - body_pos[:,:3]
         diff_body_pos_dist = (diff_global_body_pos**2).mean(dim=-1).mean(dim=-1)
 
@@ -1542,6 +1547,9 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
 
     reward = w_pos * r_body_pos + w_rot * r_body_rot + w_vel * r_vel + w_ang_vel * r_ang_vel
     reward_raw = torch.stack([r_body_pos, r_body_rot, r_vel, r_ang_vel], dim=-1)
+
+    print("imitation_reward", r_body_pos, r_body_rot, r_vel, r_ang_vel, reward)
+
     # import ipdb
     # ipdb.set_trace()
     return reward, reward_raw
