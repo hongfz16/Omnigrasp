@@ -160,7 +160,7 @@ CUDA_VISIBLE_DEVICES=0 python phc/run_hydra.py project_name=OmniGrasp   exp_name
 
 CUDA_VISIBLE_DEVICES=0 python phc/run_hydra.py project_name=OmniGrasp   exp_name=omnigrasp_scene_004_from_scratch_cut130_mid_new_track_tp_no_pregrasp_release_reward learning=omnigrasp_rnn env=env_x_grab_z env.task=HumanoidOmniGraspZ env.motion_file=sample_data/Bottle_sample_w_bg.pkl  env.models=['output/HumanoidIm/pulse_x_omnigrasp/Humanoid.pth']   env.numTrajSamples=20 env.trajSampleTimestepInv=15 robot=smplx_humanoid sim=hand_sim env.num_envs=768 learning.params.config.minibatch_size=4096 epoch=-1 env.use_track_reward=True env.use_track_reset=True env.use_track_obs=True +env.pregrasp_reward=False env.control_bodies=['Head','L_Toe','R_Toe','L_Wrist','R_Wrist'] +env.use_release_reward=True +env.background_urdf_name=Scene-004.urdf +env.target_object_name=Bottle env.episode_length=1454
 
-+env.draw_smpl_marker=True
+epoch=-1 test=True env.num_envs=1 headless=False +env.draw_smpl_marker=True
 
 
 ```
