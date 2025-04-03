@@ -762,7 +762,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         print(self.progress_buf)
         self.rew_buf[:] = 0
         self.reward_raw = None
-        if self.cfg.env.get("use_grab_reward", False):
+        if self.cfg.env.get("use_grab_reward", True):
             grab_reward, grab_reward_raw  = compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_lin_vel, obj_ang_vel,  ref_o_rb_pos, ref_o_rb_rot, ref_o_lin_vel, ref_o_ang_vel,  contact_filter, self.contact_data[self.progress_buf], self.reward_specs)
 
             if self.cfg.env.get("pregrasp_reward", True):
@@ -1435,7 +1435,7 @@ def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_v
     # # r_close = torch.exp(-k_pos * (hand_pos_diff.min(dim = -1).values **2))
     if type(curr_contact_obs) is np.int32:
         curr_contact_obs = np.array([curr_contact_obs])
-    contact_symbol = torch.where(torch.from_numpy(curr_contact_obs).to(r_contact_lifted.device) == 0, torch.zeros_like(r_contact_lifted) - 10, torch.zeros_like(r_contact_lifted) + 1)
+    contact_symbol = torch.where(torch.from_numpy(curr_contact_obs).to(r_contact_lifted.device) == 0, torch.zeros_like(r_contact_lifted) - 1, torch.zeros_like(r_contact_lifted) + 1)
     # print(contact_symbol, r_contact_lifted)
     # ##### pos_filter makes sure that no reward is given if the hand is too far from the object.
     # # reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact  + r_close * w_close
@@ -1443,6 +1443,7 @@ def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_v
     # print(contact_filter, contact_symbol)
 
     reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact * contact_symbol
+    # reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) #+ r_contact_lifted * w_conctact * contact_symbol
     # # reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel, r_close], dim=-1)
     reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel], dim=-1)
 
