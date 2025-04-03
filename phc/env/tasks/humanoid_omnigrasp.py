@@ -1384,7 +1384,7 @@ def check_contact(hand_contact_force, obj_contact_forces, hand_pos, obj_pos, obj
     vel_filter = (torch.norm(obj_vel, dim= -1, p = 2) > 0.01)[:, 0]
     
     vel_filter = torch.logical_or(vel_filter, object_lifted) # velocity means the object is moved. The object lifted is for when the object is mid-air and stationary. 
-    vel_filter[table_removed]  = True # if table is removed, we do not need the proxy check anymore. 
+    # vel_filter[table_removed]  = True # if table is removed, we do not need the proxy check anymore. 
     proxy_check = torch.logical_and(pos_filter, vel_filter)
     
     contact_filter = torch.logical_and(obj_contact_force_sum, proxy_check) # 
@@ -1435,7 +1435,7 @@ def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_v
     # # r_close = torch.exp(-k_pos * (hand_pos_diff.min(dim = -1).values **2))
     if type(curr_contact_obs) is np.int32:
         curr_contact_obs = np.array([curr_contact_obs])
-    contact_symbol = torch.where(torch.from_numpy(curr_contact_obs).to(r_contact_lifted.device) == 0, torch.zeros_like(r_contact_lifted) - 10, torch.zeros_like(r_contact_lifted) + 1)
+    contact_symbol = torch.where(torch.from_numpy(curr_contact_obs).to(r_contact_lifted.device) == 0, torch.zeros_like(r_contact_lifted) - 1, torch.zeros_like(r_contact_lifted) + 1)
     # print(contact_symbol, r_contact_lifted)
     # ##### pos_filter makes sure that no reward is given if the hand is too far from the object.
     # # reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact  + r_close * w_close
@@ -1443,6 +1443,7 @@ def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_v
     # print(contact_filter, contact_symbol)
 
     reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact * contact_symbol
+    # reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) #+ r_contact_lifted * w_conctact * contact_symbol
     # # reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel, r_close], dim=-1)
     reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel], dim=-1)
     
@@ -1511,7 +1512,7 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
     w_pos, w_rot, w_vel, w_ang_vel = rwd_specs["w_pos"], rwd_specs["w_rot"], rwd_specs["w_vel"], rwd_specs["w_ang_vel"]
 
     # body position reward
-    if ref_body_pos.shape[1]>3:
+    if ref_body_pos.shape[1]==15:
         diff_global_body_pos = ref_body_pos[:,:3] - body_pos[:,:3]
         diff_body_pos_dist = (diff_global_body_pos**2).mean(dim=-1).mean(dim=-1)
 
