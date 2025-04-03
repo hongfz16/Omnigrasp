@@ -1526,7 +1526,7 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
         diff_global_body_pos_hand = ref_body_pos[:,3:] - body_pos[:,3:]
         diff_body_pos_dist_hand = (diff_global_body_pos_hand**2).mean(dim=-1).mean(dim=-1) * 10
 
-        r_body_pos = (torch.exp(-k_pos * diff_body_pos_dist) + torch.exp(-k_pos * diff_body_pos_dist_hand))/2
+        r_body_pos = torch.exp(-k_pos * diff_body_pos_dist -k_pos * diff_body_pos_dist_hand)
     else:
         diff_global_body_pos = ref_body_pos[:,:3] - body_pos[:,:3]
         diff_body_pos_dist = (diff_global_body_pos**2).mean(dim=-1).mean(dim=-1)
