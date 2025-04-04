@@ -903,7 +903,8 @@ class Humanoid(BaseTask):
                 # sk_tree = SkeletonTree.from_mjcf("phc/data/assets/mjcf/smplx_humanoid.xml")
                 sk_tree = SkeletonTree.from_mjcf(flags.humanoid_xml)
 
-                humanoid_asset = self.gym.load_asset(self.sim, ".", flags.humanoid_xml, asset_options)
+                # humanoid_asset = self.gym.load_asset(self.sim, ".", flags.humanoid_xml, asset_options)
+                humanoid_asset = self.gym.load_asset(self.sim, asset_root, asset_file_real, asset_options)
                 actuator_props = self.gym.get_asset_actuator_properties(humanoid_asset)
                 motor_efforts = [prop.motor_effort for prop in actuator_props]
 
