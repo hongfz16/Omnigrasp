@@ -28,6 +28,7 @@
 
 import glob
 import os
+import joblib
 
 # os.environ['MESA_VK_DEVICE_SELECT'] = '10de:2230'
 # os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -346,6 +347,11 @@ def main(cfg_hydra: DictConfig) -> None:
             print(path)
             print("no file to resume!!!!")
 
+    flags.humanoid_xml = os.path.join("phc/data/assets/mjcf/", cfg["env"].get("humanoid_xml", "smplx_humanoid.xml"))
+    cfg.env.episode_length = joblib.load(cfg.env.motion_file)[cfg["env"].get("target_object_name", "Otter")]['obj_data']['obj_pose'].shape[0]
+
+    print("Setting humanoid_xml to", flags.humanoid_xml)
+    print("Setting episode_length to", cfg.env.episode_length)
     
     os.makedirs(cfg.output_path, exist_ok=True)
     

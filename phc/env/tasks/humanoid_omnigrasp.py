@@ -430,7 +430,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
             asset_options.vhacd_enabled = True
             
-            asset_options.vhacd_params.max_convex_hulls = 32 
+            asset_options.vhacd_params.max_convex_hulls = 32
             asset_options.vhacd_params.max_num_vertices_per_ch = 72
             
             if "oakink" in obj_asset_root:
