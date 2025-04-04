@@ -791,8 +791,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
 
             track_reward, track_reward_raw = compute_imitation_reward(track_pos, track_rot, track_vel, track_ang_vel, ref_track_pos, ref_track_rot, ref_track_vel, ref_track_ang_vel, self.reward_specs)
 
-            self.rew_buf[:] = self.rew_buf * track_reward
-            # self.rew_buf[self.rew_buf != track_reward] /= 2
+            self.rew_buf[:] = self.rew_buf + track_reward
+            self.rew_buf[self.rew_buf != track_reward] /= 2
             if self.reward_raw is not None:
                 self.reward_raw = torch.cat([self.reward_raw, track_reward_raw], dim=-1)
             else:
@@ -1435,15 +1435,15 @@ def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_v
     # # r_close = torch.exp(-k_pos * (hand_pos_diff.min(dim = -1).values **2))
     if type(curr_contact_obs) is np.int32:
         curr_contact_obs = np.array([curr_contact_obs])
-    contact_symbol = torch.where(torch.from_numpy(curr_contact_obs).to(r_contact_lifted.device) == 0, torch.zeros_like(r_contact_lifted), torch.zeros_like(r_contact_lifted) + 1)
+    contact_symbol = torch.where(torch.from_numpy(curr_contact_obs).to(r_contact_lifted.device) == 0, torch.zeros_like(r_contact_lifted) - 1, torch.zeros_like(r_contact_lifted) + 1)
     # print(contact_symbol, r_contact_lifted)
     # ##### pos_filter makes sure that no reward is given if the hand is too far from the object.
     # # reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact  + r_close * w_close
 
     # print(contact_filter, contact_symbol)
 
-    # reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact * contact_symbol
-    reward = r_obj_pos * r_obj_rot * r_lin_vel * r_ang_vel * torch.exp(-1 * (r_contact_lifted - contact_symbol) ** 2)
+    reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) * contact_filter + r_contact_lifted * w_conctact * contact_symbol
+    # reward = torch.exp((-k_pos * diff_body_pos_dist -k_rot * diff_global_body_angle_dist -k_vel * diff_global_vel_dist -k_ang_vel * diff_global_ang_vel_dist -1 * (r_contact_lifted - contact_symbol) ** 2) * r_contact_lifted)
     # reward = (w_pos * r_obj_pos + w_rot * r_obj_rot + w_vel * r_lin_vel + w_ang_vel * r_ang_vel) #+ r_contact_lifted * w_conctact * contact_symbol
     # # reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel, r_close], dim=-1)
     reward_raw = torch.stack([r_obj_pos, r_obj_rot, r_lin_vel, r_ang_vel], dim=-1)
@@ -1524,7 +1524,7 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
         diff_body_pos_dist = (diff_global_body_pos**2).mean(dim=-1).mean(dim=-1)
 
         diff_global_body_pos_hand = ref_body_pos[:,3:] - body_pos[:,3:]
-        diff_body_pos_dist_hand = (diff_global_body_pos_hand**2).mean(dim=-1).mean(dim=-1) * 10
+        diff_body_pos_dist_hand = (diff_global_body_pos_hand**2).mean(dim=-1).mean(dim=-1) * 2
 
         r_body_pos = torch.exp(-k_pos * diff_body_pos_dist -k_pos * diff_body_pos_dist_hand)
     else:
@@ -1548,8 +1548,8 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
     diff_global_ang_vel_dist = (diff_global_ang_vel**2).mean(dim=-1).mean(dim=-1)
     r_ang_vel = torch.exp(-k_ang_vel * diff_global_ang_vel_dist)
 
-    # reward = w_pos * r_body_pos + w_rot * r_body_rot + w_vel * r_vel + w_ang_vel * r_ang_vel
-    reward = r_body_pos * r_body_rot * r_vel * r_ang_vel
+    reward = w_pos * r_body_pos + w_rot * r_body_rot + w_vel * r_vel + w_ang_vel * r_ang_vel
+    # reward = r_body_pos * r_body_rot * r_vel * r_ang_vel
     reward_raw = torch.stack([r_body_pos, r_body_rot, r_vel, r_ang_vel], dim=-1)
 
     # print("imitation_reward", r_body_pos, r_body_rot, r_vel, r_ang_vel, reward)
