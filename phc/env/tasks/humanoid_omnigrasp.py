@@ -784,8 +784,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, smpl_params, limb_weights, pose_aa, ref_rb_pos, ref_rb_rot, ref_body_vel, ref_body_ang_vel = \
                     motion_res["root_pos"], motion_res["root_rot"], motion_res["dof_pos"], motion_res["root_vel"], motion_res["root_ang_vel"], motion_res["dof_vel"], \
                     motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
-            ref_track_pos = ref_rb_pos[:, self._track_body_ids, :]
-            ref_track_rot = ref_rb_rot[:, self._track_body_ids, :]
+            ref_track_pos = ref_rb_pos[:, self._track_body_ids, :].clone()
+            ref_track_rot = ref_rb_rot[:, self._track_body_ids, :].clone()
             # if ref_track_rot.shape[1] == 15:
             #     ref_track_rot[:, 3] *= -1
             #     ref_track_rot[:, 5:10] *= -1
@@ -800,7 +800,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             track_reward, track_reward_raw = compute_imitation_reward(track_pos, track_rot, track_vel, track_ang_vel, ref_track_pos, ref_track_rot, ref_track_vel, ref_track_ang_vel, self.reward_specs)
 
             # import pdb; pdb.set_trace()
-            print(track_reward_raw)
+            # print(track_reward_raw)
 
             self.rew_buf[:] = self.rew_buf + track_reward
             self.rew_buf[self.rew_buf != track_reward] /= 2
@@ -885,6 +885,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                 termination_distances = [0.2, 0.05, 0.05, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance]
             else:
                 raise NotImplementedError
+
+            termination_distances = torch.Tensor(termination_distances).to(self._rigid_body_pos.device)
 
             track_reset_buf, track_terminate_buf = compute_humanoid_im_reset(  # Humanoid reset
                     self.reset_buf, self.progress_buf, self._contact_forces, self._contact_body_ids, self._rigid_body_pos[..., self._track_body_ids, :], ref_rb_pos[..., self._track_body_ids, :], pass_time, self._enable_early_termination, termination_distances,
