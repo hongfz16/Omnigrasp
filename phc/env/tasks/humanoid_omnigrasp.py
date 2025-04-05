@@ -786,6 +786,14 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                     motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
             ref_track_pos = ref_rb_pos[:, self._track_body_ids, :]
             ref_track_rot = ref_rb_rot[:, self._track_body_ids, :]
+            if ref_track_rot.shape[1] == 15:
+                ref_track_rot[:, 3] *= -1
+                ref_track_rot[:, 5:10] *= -1
+            elif ref_track_rot.shape[1] == 15-2:
+                ref_track_rot[:, 3-2] *= -1
+                ref_track_rot[:, 5-2:10-2] *= -1
+            else:
+                raise NotImplementedError
             ref_track_vel = ref_body_vel[:, self._track_body_ids, :]
             ref_track_ang_vel = ref_body_ang_vel[:, self._track_body_ids, :]
 
