@@ -800,7 +800,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             track_reward, track_reward_raw = compute_imitation_reward(track_pos, track_rot, track_vel, track_ang_vel, ref_track_pos, ref_track_rot, ref_track_vel, ref_track_ang_vel, self.reward_specs)
 
             # import pdb; pdb.set_trace()
-            print(track_reward_raw)
+            # print(track_reward_raw)
 
             self.rew_buf[:] = self.rew_buf + track_reward
             self.rew_buf[self.rew_buf != track_reward] /= 2
@@ -878,13 +878,15 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                     motion_res["root_pos"], motion_res["root_rot"], motion_res["dof_pos"], motion_res["root_vel"], motion_res["root_ang_vel"], motion_res["dof_vel"], \
                     motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
 
-            finger_termination_distance = 0.02
+            finger_termination_distance = 0.1
             if self._track_body_ids.shape[0] == 15:
-                termination_distances = [0.2, 0.2, 0.2, 0.05, 0.05, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance]
+                termination_distances = [0.2, 0.2, 0.2, 0.1, 0.1, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance]
             elif self._track_body_ids.shape[0] == 13:
-                termination_distances = [0.2, 0.05, 0.05, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance]
+                termination_distances = [0.2, 0.1, 0.1, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance]
             else:
                 raise NotImplementedError
+
+            termination_distances = torch.Tensor(termination_distances).to(self._rigid_body_pos.device)
 
             track_reset_buf, track_terminate_buf = compute_humanoid_im_reset(  # Humanoid reset
                     self.reset_buf, self.progress_buf, self._contact_forces, self._contact_body_ids, self._rigid_body_pos[..., self._track_body_ids, :], ref_rb_pos[..., self._track_body_ids, :], pass_time, self._enable_early_termination, termination_distances,
@@ -1568,7 +1570,7 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
     diff_global_body_angle_dist = (diff_global_body_angle**2).mean(dim=-1)
     r_body_rot = torch.exp(-k_rot * diff_global_body_angle_dist)
     
-    print(diff_global_body_angle)
+    # print(diff_global_body_angle)
 
     # body linear velocity reward
     diff_global_vel = ref_body_vel - body_vel
