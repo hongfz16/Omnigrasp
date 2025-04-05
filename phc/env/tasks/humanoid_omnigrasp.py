@@ -786,18 +786,20 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                     motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
             ref_track_pos = ref_rb_pos[:, self._track_body_ids, :]
             ref_track_rot = ref_rb_rot[:, self._track_body_ids, :]
-            if ref_track_rot.shape[1] == 15:
-                ref_track_rot[:, 3] *= -1
-                ref_track_rot[:, 5:10] *= -1
-            elif ref_track_rot.shape[1] == 15-2:
-                ref_track_rot[:, 3-2] *= -1
-                ref_track_rot[:, 5-2:10-2] *= -1
-            else:
-                raise NotImplementedError
+            # if ref_track_rot.shape[1] == 15:
+            #     ref_track_rot[:, 3] *= -1
+            #     ref_track_rot[:, 5:10] *= -1
+            # elif ref_track_rot.shape[1] == 15-2:
+            #     ref_track_rot[:, 3-2] *= -1
+            #     ref_track_rot[:, 5-2:10-2] *= -1
+            # else:
+            #     raise NotImplementedError
             ref_track_vel = ref_body_vel[:, self._track_body_ids, :]
             ref_track_ang_vel = ref_body_ang_vel[:, self._track_body_ids, :]
 
             track_reward, track_reward_raw = compute_imitation_reward(track_pos, track_rot, track_vel, track_ang_vel, ref_track_pos, ref_track_rot, ref_track_vel, ref_track_ang_vel, self.reward_specs)
+
+            import pdb; pdb.set_trace()
 
             self.rew_buf[:] = self.rew_buf + track_reward
             self.rew_buf[self.rew_buf != track_reward] /= 2
@@ -1524,7 +1526,8 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor,Tensor, Tensor, Dict[str, float]) -> Tuple[Tensor, Tensor]
     k_pos, k_rot, k_vel, k_ang_vel = rwd_specs["k_pos"], rwd_specs["k_rot"], rwd_specs["k_vel"], rwd_specs["k_ang_vel"]
     # w_pos, w_rot, w_vel, w_ang_vel = rwd_specs["w_pos"], rwd_specs["w_rot"], rwd_specs["w_vel"], rwd_specs["w_ang_vel"]
-    w_pos, w_rot, w_vel, w_ang_vel = 0.5, 0.3, 0.1, 0.1
+    # w_pos, w_rot, w_vel, w_ang_vel = 0.5, 0.3, 0.1, 0.1
+    w_pos, w_rot, w_vel, w_ang_vel = 0.8, 0.0, 0.1, 0.1
 
     # body position reward
     if ref_body_pos.shape[1]==15:
@@ -1553,6 +1556,8 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
     diff_global_body_angle = torch_utils.quat_to_angle_axis(diff_global_body_rot)[0]
     diff_global_body_angle_dist = (diff_global_body_angle**2).mean(dim=-1)
     r_body_rot = torch.exp(-k_rot * diff_global_body_angle_dist)
+    
+    # print(diff_global_body_angle)
 
     # body linear velocity reward
     diff_global_vel = ref_body_vel - body_vel
