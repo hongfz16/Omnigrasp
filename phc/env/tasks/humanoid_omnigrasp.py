@@ -731,6 +731,23 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         else:
             return (self.get_obs_size() , )
 
+    def compute_relative_hand_rotation(self, ref_hand_rot):
+        # "L_Wrist", 'L_Index1', 'L_Index2', 'L_Index3', 'L_Middle1', 'L_Middle2', 'L_Middle3', 'L_Pinky1', 'L_Pinky2', 'L_Pinky3', 'L_Ring1', 'L_Ring2', 'L_Ring3', 'L_Thumb1', 'L_Thumb2', 'L_Thumb3', 16"R_Wrist", 'R_Index1', 'R_Index2', 'R_Index3', 'R_Middle1', 'R_Middle2', 'R_Middle3', 'R_Pinky1', 'R_Pinky2', 'R_Pinky3', 'R_Ring1', 'R_Ring2', 'R_Ring3', 'R_Thumb1', 'R_Thumb2', 'R_Thumb3'
+        hand_rot = self._rigid_body_rot[:, self._hand_body_ids, :]
+        parents = torch.Tensor([-1, 0, 1, 2, 0, 4, 5, 0, 7, 8, 0, 10, 11, 0, 13, 14, -1, 16, 17, 18, 16, 20, 21, 16, 23, 24, 16, 26, 27, 16, 29, 30]).long()
+
+        def get_relative_pose(rot):
+            ch = rot[:, parents != -1]
+            pa = rot[:, parents][:, parents != -1]
+            rel_rot = torch_utils.quat_mul(ch, torch_utils.quat_conjugate(pa))
+
+            return rel_rot
+        
+        ref_rel_rot = get_relative_pose(ref_hand_rot)
+        rel_rot = get_relative_pose(hand_rot)
+
+        return rel_rot, ref_rel_rot
+
     def _compute_reward(self, actions):
         obj_pos = self._obj_states[..., 0:3]
         obj_rot = self._obj_states[..., 3:7]
@@ -797,7 +814,18 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             ref_track_vel = ref_body_vel[:, self._track_body_ids, :]
             ref_track_ang_vel = ref_body_ang_vel[:, self._track_body_ids, :]
 
-            track_reward, track_reward_raw = compute_imitation_reward(track_pos, track_rot, track_vel, track_ang_vel, ref_track_pos, ref_track_rot, ref_track_vel, ref_track_ang_vel, self.reward_specs)
+            rel_rot, ref_rel_rot = self.compute_relative_hand_rotation(ref_rb_rot[:, self._hand_body_ids])
+            if ref_track_rot.shape[1] == 15:
+                new_track_rot = torch.cat([track_rot[:, :3], rel_rot], 1)
+                new_ref_track_rot = torch.cat([ref_track_rot[:, :3], ref_rel_rot], 1)
+            elif ref_track_rot.shape[1] == 13:
+                new_track_rot = torch.cat([track_rot[:, :1], rel_rot], 1)
+                new_ref_track_rot = torch.cat([ref_track_rot[:, :1], ref_rel_rot], 1)
+            else:
+                raise NotImplementedError
+
+            # track_reward, track_reward_raw = compute_imitation_reward(track_pos, track_rot, track_vel, track_ang_vel, ref_track_pos, ref_track_rot, ref_track_vel, ref_track_ang_vel, self.reward_specs)
+            track_reward, track_reward_raw = compute_imitation_reward(track_pos, new_track_rot, track_vel, track_ang_vel, ref_track_pos, new_ref_track_rot, ref_track_vel, ref_track_ang_vel, self.reward_specs)
 
             # import pdb; pdb.set_trace()
             # print(track_reward_raw)
@@ -1539,8 +1567,8 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor,Tensor, Tensor, Dict[str, float]) -> Tuple[Tensor, Tensor]
     k_pos, k_rot, k_vel, k_ang_vel = rwd_specs["k_pos"], rwd_specs["k_rot"], rwd_specs["k_vel"], rwd_specs["k_ang_vel"]
     # w_pos, w_rot, w_vel, w_ang_vel = rwd_specs["w_pos"], rwd_specs["w_rot"], rwd_specs["w_vel"], rwd_specs["w_ang_vel"]
-    # w_pos, w_rot, w_vel, w_ang_vel = 0.5, 0.3, 0.1, 0.1
-    w_pos, w_rot, w_vel, w_ang_vel = 0.8, 0.0, 0.1, 0.1
+    w_pos, w_rot, w_vel, w_ang_vel = 0.5, 0.3, 0.1, 0.1
+    # w_pos, w_rot, w_vel, w_ang_vel = 0.8, 0.0, 0.1, 0.1
 
     # body position reward
     if ref_body_pos.shape[1]==15:
