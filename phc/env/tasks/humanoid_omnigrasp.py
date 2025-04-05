@@ -799,7 +799,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
 
             track_reward, track_reward_raw = compute_imitation_reward(track_pos, track_rot, track_vel, track_ang_vel, ref_track_pos, ref_track_rot, ref_track_vel, ref_track_ang_vel, self.reward_specs)
 
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
 
             self.rew_buf[:] = self.rew_buf + track_reward
             self.rew_buf[self.rew_buf != track_reward] /= 2
