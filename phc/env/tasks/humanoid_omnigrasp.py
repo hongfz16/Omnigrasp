@@ -906,11 +906,13 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                     motion_res["root_pos"], motion_res["root_rot"], motion_res["dof_pos"], motion_res["root_vel"], motion_res["root_ang_vel"], motion_res["dof_vel"], \
                     motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
 
-            finger_termination_distance = 0.1
+            other_distance = 0.25 #0.2
+            wrist_distance = 0.2 #0.1
+            finger_termination_distance = 0.2 #0.1
             if self._track_body_ids.shape[0] == 15:
-                termination_distances = [0.2, 0.2, 0.2, 0.1, 0.1, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance]
+                termination_distances = [other_distance, other_distance, other_distance, wrist_distance, wrist_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance]
             elif self._track_body_ids.shape[0] == 13:
-                termination_distances = [0.2, 0.1, 0.1, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance]
+                termination_distances = [other_distance, wrist_distance, wrist_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance]
             else:
                 raise NotImplementedError
 
@@ -919,6 +921,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             track_reset_buf, track_terminate_buf = compute_humanoid_im_reset(  # Humanoid reset
                     self.reset_buf, self.progress_buf, self._contact_forces, self._contact_body_ids, self._rigid_body_pos[..., self._track_body_ids, :], ref_rb_pos[..., self._track_body_ids, :], pass_time, self._enable_early_termination, termination_distances,
                     flags.no_collision_check, False)
+            # track_reset_buf, track_terminate_buf = compute_humanoid_im_reset(  # Humanoid reset
                     # self.reset_buf, self.progress_buf, self._contact_forces, self._contact_body_ids, self._rigid_body_pos[..., self._track_body_ids, :], ref_rb_pos[..., self._track_body_ids, :], pass_time, self._enable_early_termination, self._termination_distances[..., self._track_body_ids],
                     # flags.no_collision_check, flags.im_eval and (not self.strict_eval))
             
