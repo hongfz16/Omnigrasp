@@ -1623,7 +1623,7 @@ def compute_imitation_reward(body_pos, body_rot, body_vel, body_ang_vel, ref_bod
     # ipdb.set_trace()
     return reward, reward_raw
 
-@torch.jit.script
+# @torch.jit.script
 def compute_humanoid_im_reset(reset_buf, progress_buf, contact_buf, contact_body_ids, rigid_body_pos, ref_body_pos, pass_time, enable_early_termination, termination_distance, disableCollision, use_mean):
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, Tensor, bool, bool) -> Tuple[Tensor, Tensor]
     terminated = torch.zeros_like(reset_buf)
@@ -1634,6 +1634,9 @@ def compute_humanoid_im_reset(reset_buf, progress_buf, contact_buf, contact_body
             has_fallen = torch.any(torch.norm(rigid_body_pos - ref_body_pos, dim=-1) > termination_distance, dim=-1)  # using max
         # first timestep can sometimes still have nonzero contact forces
         # so only check after first couple of steps
+            print(torch.norm(rigid_body_pos - ref_body_pos, dim=-1).detach().cpu().numpy())
+            print(torch.norm(rigid_body_pos - ref_body_pos, dim=-1) > termination_distance)
+            import pdb; pdb.set_trace()
         has_fallen *= (progress_buf > 1)
         if disableCollision:
             has_fallen[:] = False
