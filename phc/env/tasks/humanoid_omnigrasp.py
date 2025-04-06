@@ -1634,9 +1634,9 @@ def compute_humanoid_im_reset(reset_buf, progress_buf, contact_buf, contact_body
             has_fallen = torch.any(torch.norm(rigid_body_pos - ref_body_pos, dim=-1) > termination_distance, dim=-1)  # using max
         # first timestep can sometimes still have nonzero contact forces
         # so only check after first couple of steps
-            print(torch.norm(rigid_body_pos - ref_body_pos, dim=-1).detach().cpu().numpy())
-            print(torch.norm(rigid_body_pos - ref_body_pos, dim=-1) > termination_distance)
-            import pdb; pdb.set_trace()
+            # print(torch.norm(rigid_body_pos - ref_body_pos, dim=-1).detach().cpu().numpy())
+            # print(torch.norm(rigid_body_pos - ref_body_pos, dim=-1) > termination_distance)
+            # import pdb; pdb.set_trace()
         has_fallen *= (progress_buf > 1)
         if disableCollision:
             has_fallen[:] = False
