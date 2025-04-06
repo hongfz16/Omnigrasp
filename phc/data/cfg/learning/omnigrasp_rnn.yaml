@@ -78,7 +78,7 @@ params:
     save_best_after: 100
     save_frequency: 1000
     # eval_frequency: 250
-    eval_frequency: 2500
+    eval_frequency: 250000
     print_stats: False
     save_intermediate: True
     entropy_coef: 0.0
