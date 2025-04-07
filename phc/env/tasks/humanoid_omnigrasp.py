@@ -71,7 +71,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
 
         # self.contact_data = data_seq['Otter']['obj_data']['contact_info']
         self.contact_data = data_seq[self.target_object_name]['obj_data']['contact_info']
-        self.contact_data = np.concatenate([self.contact_data, np.array([0], dtype=self.contact_data.dtype)], 0)
+        self.contact_data = np.concatenate([self.contact_data, np.array([0,0], dtype=self.contact_data.dtype)], 0)
         if not cfg['env'].get("use_release_reward", False):
             self.contact_data[:] = 1
         
@@ -869,8 +869,6 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             pass_time = time >= self.max_episode_length * self.dt
             motion_res = self._traj_gen.get_motion_state(self._sampled_motion_ids, time)
 
-
-        
         if self.cfg.env.get("use_grab_reset", False):
             ref_o_ang_vel, ref_o_lin_vel, ref_o_rb_rot, ref_o_rb_pos = motion_res['o_ang_vel'][:, :1], motion_res['o_lin_vel'][:, :1], motion_res['o_rb_rot'][:, :1], motion_res['o_rb_pos'][:, :1]
             
@@ -935,6 +933,10 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         is_recovery = torch.logical_and(~pass_time, self._cycle_counter > 0)  # pass time should override the cycle counter.
         self.reset_buf[is_recovery] = 0
         self._terminate_buf[is_recovery] = 0
+
+        # print(self.reset_buf)
+        # print(pass_time)
+        # print(self.progress_buf)
 
         return
 
