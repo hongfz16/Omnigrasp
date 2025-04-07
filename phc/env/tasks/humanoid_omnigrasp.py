@@ -906,9 +906,9 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                     motion_res["root_pos"], motion_res["root_rot"], motion_res["dof_pos"], motion_res["root_vel"], motion_res["root_ang_vel"], motion_res["dof_vel"], \
                     motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
 
-            other_distance = 0.2 #0.25 #0.2
-            wrist_distance = 0.1 #0.2 #0.1
-            finger_termination_distance = 0.1 #0.2 #0.1
+            other_distance = 0.25 #0.25 #0.2
+            wrist_distance = 0.15 #0.2 #0.1
+            finger_termination_distance = 0.15 #0.2 #0.1
             if self._track_body_ids.shape[0] == 15:
                 termination_distances = [other_distance, other_distance, other_distance, wrist_distance, wrist_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance, finger_termination_distance]
             elif self._track_body_ids.shape[0] == 13:
