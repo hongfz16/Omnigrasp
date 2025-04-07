@@ -71,6 +71,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
 
         # self.contact_data = data_seq['Otter']['obj_data']['contact_info']
         self.contact_data = data_seq[self.target_object_name]['obj_data']['contact_info']
+        self.contact_data = np.concatenate([self.contact_data, np.array([0], dtype=self.contact_data.dtype)], 0)
         if not cfg['env'].get("use_release_reward", False):
             self.contact_data[:] = 1
         
