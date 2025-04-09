@@ -75,6 +75,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         for i in range(self.contact_data.shape[0]):
             if self.contact_data[i] == 1:
                 self.contact_frame_id = i
+                break
         assert self.contact_frame_id != -1
         delay_num = cfg['env'].get("delay_contact", -1)
         self.delay_num = delay_num
