@@ -71,9 +71,23 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
 
         # self.contact_data = data_seq['Otter']['obj_data']['contact_info']
         self.contact_data = data_seq[self.target_object_name]['obj_data']['contact_info']
+        self.contact_frame_id = -1
+        for i in range(self.contact_data.shape[0]):
+            if self.contact_data[i] == 1:
+                self.contact_frame_id = i
+        assert self.contact_frame_id != -1
+        delay_num = cfg['env'].get("delay_contact", -1)
+        self.delay_num = delay_num
+        if delay_num > 0:
+            for i in range(delay_num):
+                self.contact_data[i+self.contact_frame_id] = 0
+            self.contact_frame_id += delay_num
+
         self.contact_data = np.concatenate([self.contact_data, np.array([0,0], dtype=self.contact_data.dtype)], 0)
         if not cfg['env'].get("use_release_reward", False):
             self.contact_data[:] = 1
+
+        self.contact_data = torch.from_numpy(self.contact_data)
         
         self.gender  = data_seq[data_key]["gender"]
         self.gender_number = torch.zeros(1)
@@ -775,13 +789,15 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         hand_contact_force = self._contact_forces[:, self._hand_body_ids, :]
         table_removed_flag = self.progress_buf > self.table_remove_frame
         table_removed = self.all_env_ids[table_removed_flag]
+
+        contact_flag = self.contact_data.to(self.progress_buf.device)[self.progress_buf.long()] == 1
         
         contact_filter = check_contact(hand_contact_force, obj_contact_forces, hand_pos, obj_pos, obj_lin_vel, table_removed, self.close_distance_contact)
         # print(self.progress_buf)
         self.rew_buf[:] = 0
         self.reward_raw = None
         if self.cfg.env.get("use_grab_reward", True):
-            grab_reward, grab_reward_raw  = compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_lin_vel, obj_ang_vel,  ref_o_rb_pos, ref_o_rb_rot, ref_o_lin_vel, ref_o_ang_vel,  contact_filter, self.contact_data[self.progress_buf], self.reward_specs)
+            grab_reward, grab_reward_raw  = compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_lin_vel, obj_ang_vel,  ref_o_rb_pos, ref_o_rb_rot, ref_o_lin_vel, ref_o_ang_vel,  contact_filter, self.contact_data.cpu().numpy()[self.progress_buf], self.reward_specs)
 
             if self.cfg.env.get("pregrasp_reward", True):
                 contact_hand_dict = self._motion_lib.get_contact_hand_pose(self._sampled_motion_ids)
@@ -831,8 +847,12 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             # import pdb; pdb.set_trace()
             # print(track_reward_raw)
 
-            self.rew_buf[:] = self.rew_buf + track_reward
-            self.rew_buf[self.rew_buf != track_reward] /= 2
+            if self.delay_num == -1:
+                self.rew_buf[:] = self.rew_buf + track_reward
+                self.rew_buf[self.rew_buf != track_reward] /= 2
+            else:
+                self.rew_buf[:] = track_reward
+                self.rew_buf[contact_flag] = (self.rew_buf[contact_flag] + grab_reward[contact_flag]) / 2
             if self.reward_raw is not None:
                 self.reward_raw = torch.cat([self.reward_raw, track_reward_raw], dim=-1)
             else:
