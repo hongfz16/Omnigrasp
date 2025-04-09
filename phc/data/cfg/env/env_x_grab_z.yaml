@@ -90,8 +90,8 @@ traj_gen:
   big_obj_mode: False
 
 terminationDistance: 0.25
-# grab_termination_distance: 0.12
-grab_termination_distance: 0.25
+grab_termination_distance: 0.12
+# grab_termination_distance: 0.25
 # grab_termination_distance: 0.5
 test_termination_distances: 0.12
 fix_height_mode: "full_fix"
