@@ -1553,7 +1553,7 @@ def compute_humanoid_grab_reset(reset_buf, progress_buf, contact_buf, contact_bo
         # print(torch.norm(obj_pos - ref_obj_pos, dim=-1).mean(), torch.norm(obj_pos - ref_obj_pos, dim=-1).max(), torch.norm(obj_pos - ref_obj_pos, dim=-1).min(), has_fallen.sum())
         
         diff_global_body_rot = torch_utils.quat_mul(ref_obj_rot, torch_utils.quat_conjugate(obj_rot))
-        diff_global_body_angle = torch_utils.quat_to_angle_axis(diff_global_body_rot)[0]
+        diff_global_body_angle = torch_utils.quat_to_angle_axis(diff_global_body_rot)[0].reshape(-1)
         has_fallen = torch.logical_or(torch.abs(diff_global_body_angle) > termination_angle, has_fallen)
 
         if check_rot_reset:
