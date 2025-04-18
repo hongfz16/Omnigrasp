@@ -898,10 +898,12 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             obj_pos = self._obj_states[..., None, 0:3]
             obj_rot = self._obj_states[..., None, 3:7]
             hand_pos = self._rigid_body_pos[:, self._hand_body_ids, :]
+
+            termination_angle = np.pi / 4
             
             grab_reset, grab_terminate = compute_humanoid_grab_reset(self.reset_buf, self.progress_buf, self._contact_forces, self._contact_body_ids, \
                                                                                 obj_pos, obj_rot,  ref_o_rb_pos, ref_o_rb_rot,  hand_pos, pass_time, self._enable_early_termination,
-                                                                                self.grab_termination_disatnce, flags.no_collision_check, self.check_rot_reset and (not flags.im_eval))
+                                                                                self.grab_termination_disatnce, termination_angle, flags.no_collision_check, self.check_rot_reset and (not flags.im_eval))
 
             if flags.im_eval:
                 if self.has_data:
@@ -1541,15 +1543,19 @@ def compute_grab_reward(root_pos, root_rot, obj_pos, obj_rot, obj_vel, obj_ang_v
     
     return reward, reward_raw
  
-@torch.jit.script
-def compute_humanoid_grab_reset(reset_buf, progress_buf, contact_buf, contact_body_ids, obj_pos, obj_rot, ref_obj_pos, ref_obj_rot, hand_pos, pass_time, enable_early_termination, termination_distance, disableCollision, check_rot_reset):
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor,Tensor, Tensor, Tensor, Tensor, bool, Tensor, bool, bool) -> Tuple[Tensor, Tensor]
+# @torch.jit.script
+def compute_humanoid_grab_reset(reset_buf, progress_buf, contact_buf, contact_body_ids, obj_pos, obj_rot, ref_obj_pos, ref_obj_rot, hand_pos, pass_time, enable_early_termination, termination_distance, termination_angle, disableCollision, check_rot_reset):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor,Tensor, Tensor, Tensor, Tensor, bool, Tensor, Tensor, bool, bool) -> Tuple[Tensor, Tensor]
     
     terminated = torch.zeros_like(reset_buf)
     if (enable_early_termination):
         has_fallen = torch.any(torch.norm(obj_pos - ref_obj_pos, dim=-1) > termination_distance, dim=-1) 
         # print(torch.norm(obj_pos - ref_obj_pos, dim=-1).mean(), torch.norm(obj_pos - ref_obj_pos, dim=-1).max(), torch.norm(obj_pos - ref_obj_pos, dim=-1).min(), has_fallen.sum())
         
+        diff_global_body_rot = torch_utils.quat_mul(ref_obj_rot, torch_utils.quat_conjugate(obj_rot))
+        diff_global_body_angle = torch_utils.quat_to_angle_axis(diff_global_body_rot)[0]
+        has_fallen = torch.logical_or(torch.abs(diff_global_body_angle) > termination_angle, has_fallen)
+
         if check_rot_reset:
             diff_global_body_rot = torch_utils.quat_mul(ref_obj_rot, torch_utils.quat_conjugate(obj_rot))
             diff_global_body_angle = torch_utils.quat_to_angle_axis(diff_global_body_rot)[0]
