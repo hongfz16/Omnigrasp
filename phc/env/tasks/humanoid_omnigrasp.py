@@ -782,7 +782,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         hand_ang_vel = self._rigid_body_ang_vel[:, self._hand_body_ids, :]
         
         motion_times = self.progress_buf * self.dt + self._motion_start_times
-        
+
         motion_res = self._traj_gen.get_motion_state(self._sampled_motion_ids, motion_times)
         
         ref_o_ang_vel, ref_o_lin_vel, ref_o_rb_rot, ref_o_rb_pos = motion_res['o_ang_vel'][:, :1], motion_res['o_lin_vel'][:, :1], motion_res['o_rb_rot'][:, :1], motion_res['o_rb_pos'][:, :1]
@@ -852,6 +852,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                 self.rew_buf[:] = self.rew_buf + track_reward
                 self.rew_buf[self.rew_buf != track_reward] /= 2
             else:
+                # print("contact", contact_flag)
+                # print("time", self.progress_buf)
                 self.rew_buf[:] = track_reward
                 self.rew_buf[contact_flag] = (self.rew_buf[contact_flag] + grab_reward[contact_flag]) / 2
             if self.reward_raw is not None:
@@ -1118,6 +1120,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
             root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, smpl_params, limb_weights, pose_aa, ref_rb_pos, ref_rb_rot, ref_body_vel, ref_body_ang_vel = \
                     motion_res["root_pos"], motion_res["root_rot"], motion_res["dof_pos"], motion_res["root_vel"], motion_res["root_ang_vel"], motion_res["dof_vel"], \
                     motion_res["motion_bodies"], motion_res["motion_limb_weights"], motion_res["motion_aa"], motion_res["rg_pos"], motion_res["rb_rot"], motion_res["body_vel"], motion_res["body_ang_vel"]
+            
+            # import pdb; pdb.set_trace()
             
             self._marker_pos[:] = ref_rb_pos
             # self._marker_rotation[..., self._track_bodies_id, :] = ref_rb_rot[..., self._track_bodies_id, :]
