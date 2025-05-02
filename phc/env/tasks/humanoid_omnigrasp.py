@@ -572,7 +572,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                 # motion_times = torch.clamp(motion_times, torch.zeros_like(motion_times), self._motion_lib.get_contact_time(self._sampled_motion_ids[env_ids]) - 0.5) # Start before contact happens.
                 motion_times = torch.rand_like(motion_times)
                 motion_times = motion_times * (self._motion_lib.get_contact_time(self._sampled_motion_ids[env_ids]) - 0.5) # Start before contact happens.
-                print("flex start at", motion_times)
+                # print("flex start at", motion_times)
 
                 if flags.test:
                     motion_times[:] = 0
@@ -794,7 +794,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         table_removed_flag = self.progress_buf > self.table_remove_frame
         table_removed = self.all_env_ids[table_removed_flag]
 
-        contact_flag = self.contact_data.to(self.progress_buf.device)[self.progress_buf.long()] == 1
+        # contact_flag = self.contact_data.to(self.progress_buf.device)[self.progress_buf.long()] == 1
+        contact_flag = self.contact_data.to(self.progress_buf.device)[(motion_times / self.dt).long()] == 1
         
         contact_filter = check_contact(hand_contact_force, obj_contact_forces, hand_pos, obj_pos, obj_lin_vel, table_removed, self.close_distance_contact)
         # print(self.progress_buf)
@@ -850,6 +851,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
 
             # import pdb; pdb.set_trace()
             # print(track_reward_raw)
+            # print(contact_flag)
 
             if self.delay_num == -1:
                 self.rew_buf[:] = self.rew_buf + track_reward
@@ -858,7 +860,8 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
                 # print("contact", contact_flag)
                 # print("time", self.progress_buf)
                 self.rew_buf[:] = track_reward
-                self.rew_buf[contact_flag] = (self.rew_buf[contact_flag] + grab_reward[contact_flag]) / 2
+                # self.rew_buf[contact_flag] = (self.rew_buf[contact_flag] + grab_reward[contact_flag]) / 2
+                self.rew_buf[contact_flag] = self.rew_buf[contact_flag] * 0.1 + grab_reward[contact_flag] * 0.9
             if self.reward_raw is not None:
                 self.reward_raw = torch.cat([self.reward_raw, track_reward_raw], dim=-1)
             else:
