@@ -565,12 +565,15 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         if (self._state_init == HumanoidAMP.StateInit.Random or self._state_init == HumanoidAMP.StateInit.Hybrid):
             motion_times = self._sample_time(self._sampled_motion_ids[env_ids])
         elif (self._state_init == HumanoidAMP.StateInit.Start):
-            # if self.cfg.env.get("flex_start", True):
-            if self.cfg.env.get("flex_start", False):
+            if self.cfg.env.get("flex_start", True):
+            # if self.cfg.env.get("flex_start", False):
                 motion_times = self._sample_time(self._sampled_motion_ids[env_ids])
                 
-                motion_times = torch.clamp(motion_times, torch.zeros_like(motion_times),  self._motion_lib.get_contact_time(self._sampled_motion_ids[env_ids]) - 0.5) # Start before contact happens.
-                    
+                # motion_times = torch.clamp(motion_times, torch.zeros_like(motion_times), self._motion_lib.get_contact_time(self._sampled_motion_ids[env_ids]) - 0.5) # Start before contact happens.
+                motion_times = torch.rand_like(motion_times)
+                motion_times = motion_times * (self._motion_lib.get_contact_time(self._sampled_motion_ids[env_ids]) - 0.5) # Start before contact happens.
+                print("flex start at", motion_times)
+
                 if flags.test:
                     motion_times[:] = 0
             elif self.cfg.env.get("contact_start", False):
@@ -592,7 +595,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
         else:
             raise NotImplementedError
 
-        motion_times[:] = 0 # Even though you sampled at a certain time, the internal timer should start at 0 
+        # motion_times[:] = 0 # Even though you sampled at a certain time, the internal timer should start at 0 
         return self._sampled_motion_ids[env_ids], motion_times, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, ref_rb_pos, ref_rb_rot, ref_body_vel, ref_body_ang_vel
 
 
@@ -1117,7 +1120,7 @@ class HumanoidOmniGrasp(humanoid_amp_task.HumanoidAMPTask):
     def _update_marker(self):
         if flags.show_traj:
             
-            motion_times = (self.progress_buf + 1) * self.dt # + self._motion_start_times + self._motion_start_times_offset # + 1 for target. 
+            motion_times = (self.progress_buf + 1) * self.dt + self._motion_start_times #+ self._motion_start_times_offset # + 1 for target. 
             motion_res = self._get_state_from_motionlib_cache(self._sampled_motion_ids, motion_times) #, self._global_offset)
             root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, smpl_params, limb_weights, pose_aa, ref_rb_pos, ref_rb_rot, ref_body_vel, ref_body_ang_vel = \
                     motion_res["root_pos"], motion_res["root_rot"], motion_res["dof_pos"], motion_res["root_vel"], motion_res["root_ang_vel"], motion_res["dof_vel"], \
